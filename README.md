@@ -1,8 +1,8 @@
-# YashScript V8.0
+# YashScript — Linguagem de programação em português para Roblox Studio
 
-Plugin de **Roblox Studio** que traz um **editor avançado + compilador de Luau direto**.
-Você escreve código em **YashScript** (uma linguagem amigável em português) dentro de uma
-fonte separada no atributo `YashScript` do script, e o plugin gera **Luau puro** no `Source`.
+YashScript V8.0 é um **plugin de Roblox Studio** com **editor avançado + compilador de Luau
+direto**. Você escreve código em YashScript (uma linguagem amigável em português) dentro de
+uma fonte separada no atributo `YashScript` do script, e o plugin gera **Luau puro** no `Source`.
 
 ```
 fonte YashScript -> Compilador.Compilar -> programa -> Gerador.GerarLuau

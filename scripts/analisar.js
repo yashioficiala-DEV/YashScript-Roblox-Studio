@@ -9,9 +9,16 @@
 const { execFileSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
+const { analisador } = require("./localizar_luau");
 
-const LUAU = process.env.LUAU_ANALYZE
-  || "C:\\Users\\yashi\\AppData\\Local\\luau\\bin\\luau-analyze.exe";
+const LUAU = analisador();
+if (!LUAU) {
+  console.error(
+    "luau-analyze nao encontrado. Instale o Luau (https://github.com/luau-lang/luau) "
+    + "ou defina a variavel LUAU_ANALYZE apontando para o executavel."
+  );
+  process.exit(1);
+}
 
 const RAIZ = path.join(__dirname, "..");
 

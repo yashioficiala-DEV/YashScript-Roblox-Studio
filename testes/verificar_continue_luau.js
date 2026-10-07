@@ -6,6 +6,7 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 const fengari = require("fengari");
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
+const { analisador, cli } = require("../scripts/localizar_luau");
 
 const raiz = path.join(__dirname, "..");
 const s = (v) => to_luastring(v, true);
@@ -39,12 +40,10 @@ executarFonte(wrapper, "validar continuar", 1);
 const luau = to_jsstring(lua.lua_tolstring(L, -1));
 if (!luau.includes("continue")) throw new Error("o Luau gerado não contém continue");
 
-const analyzer = process.env.LUAU_ANALYZE
-  || "C:\\Users\\yashi\\AppData\\Local\\luau\\bin\\luau-analyze.exe";
-if (!fs.existsSync(analyzer)) throw new Error("luau-analyze não encontrado: " + analyzer);
-const luauCli = process.env.LUAU_CLI
-  || path.join(path.dirname(analyzer), "luau.exe");
-if (!fs.existsSync(luauCli)) throw new Error("CLI Luau não encontrado: " + luauCli);
+const analyzer = analisador();
+if (!analyzer) throw new Error("luau-analyze não encontrado: instale o Luau ou defina LUAU_ANALYZE");
+const luauCli = cli(analyzer);
+if (!luauCli) throw new Error("CLI Luau não encontrado: instale o Luau ou defina LUAU_CLI");
 const temp = path.join(os.tmpdir(), "yashscript-continue-" + process.pid + ".luau");
 try {
   fs.writeFileSync(temp, luau, "utf8");

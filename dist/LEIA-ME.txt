@@ -1,32 +1,23 @@
-# Instalação rápida — YashScript V8.0
+# Instalação do YashScript (plugin para Roblox Studio)
 
-## Passos
+## Como instalar
 
 1. Feche o Roblox Studio **completamente**.
-2. Copie a pasta **YashScript** para:
+2. Dê **dois cliques** em `instalar.cmd` e siga as instruções.
+3. Abra o Roblox Studio. O YashScript aparece na **Toolbox** → guia **Plugins** (ou na toolbar).
 
-   ```
-   %LOCALAPPDATA%\Roblox\Plugins\
-   ```
+O instalador baixa a versão mais recente do GitHub e instala em:
 
-   O resultado final precisa ser:
+```
+%LOCALAPPDATA%\Roblox\Plugins\YashScript\
+```
 
-   ```
-   %LOCALAPPDATA%\Roblox\Plugins\YashScript\plugin.lua
-   ```
+## O instalador também é desinstalador
 
-3. Abra o Roblox Studio.
-4. O plugin aparece na **Toolbox** → guia **Plugins**, ou pela toolbar.
-5. Clique no botão do YashScript para abrir o editor.
+Rode o `instalar.cmd` de novo depois de instalado e escolha:
+- **1** — Atualizar para a versão mais recente
+- **2** — Desinstalar (remove o plugin do PC)
 
-## Se o plugin não aparecer
+## Alternativa manual (sem instalar nada)
 
-- Confira se a pasta está exatamente em `%LOCALAPPDATA%\Roblox\Plugins\YashScript\`.
-- Feche e reabra o Studio depois de copiar o arquivo.
-- O Studio só carrega plugins ao abrir — não adianta copiar com ele rodando.
-
-## O que é
-
-YashScript compila código escrito em uma linguagem amigável (eventos, comandos e
-variáveis em português) e gera **Luau puro** no `Source` do script. O editor do
-plugin tem autocomplete, syntax highlighting e dicionário completo da linguagem.
+Copie a pasta `YashScript` para `%LOCALAPPDATA%\Roblox\Plugins\`:

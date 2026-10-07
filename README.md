@@ -41,11 +41,25 @@ ModuleScript extra é necessário: o script gerado é Luau puro e roda sozinho.
 3. Edite no painel avançado e clique em **Gravar**.
 4. O plugin faz Compilar → GerarLuau e escreve o **LUAU PURO** no `Source`.
 
-## Instalação (2 maneiras)
+## Instalação (3 maneiras)
 
-### 1. Via ZIP (recomendado para usuários)
+### 1. Instalador automático (recomendado para usuários)
 
-1. Baixe o pacote de instalação (veja **Releases** — arquivo `YashScript-Instalador.zip`).
+1. Feche o Roblox Studio **completamente**.
+2. Baixe o arquivo `instalar.cmd` (do **Releases** ou da raiz do repositório).
+3. Dê **dois cliques** nele. O instalador baixa a versão mais recente do GitHub,
+   extrai e instala em `%LOCALAPPDATA%\Roblox\Plugins\YashScript\plugin.lua`.
+4. Abra o Roblox Studio e procure o YashScript na Toolbox (guia Plugins) ou na toolbar.
+
+**O instalador também é desinstalador:** rode o `instalar.cmd` de novo com o plugin
+já instalado e escolha:
+- `1` — **Atualizar** para a versão mais recente
+- `2` — **Desinstalar** (remove o plugin do PC)
+- `3` — Sair
+
+### 2. Via ZIP
+
+1. Baixe o pacote `YashScript-Instalador.zip` (veja **Releases**).
 2. Extraia os arquivos.
 3. Feche o Roblox Studio **completamente**.
 4. Copie a pasta `YashScript` para a pasta de plugins do Roblox:
@@ -99,11 +113,17 @@ compilador/
 plugin/
   _modelo_plugin.lua  Modelo do plugin com placeholders @@COMPILADOR@@ / @@GERADOR@@
   plugin.lua          Plugin completo gerado (o que é instalado)
+instalador/
+  instalar.cmd        Instalador + desinstalador automático do plugin
 scripts/              Ferramentas de build, lint, testes e instalação
 testes/               Testes e exemplos
 minijogo/             Exemplos de jogo (servidor + cliente)
 LOGS/                 Documentação, exemplos (.yash) e notas de desenvolvimento
 ```
+
+> **Atualização para usuários:** basta rodar o `instalar.cmd` de novo e escolher `1`.
+> Para o caminho do Marketplace/Toolbox, ao republicar o plugin o Studio atualiza
+> automaticamente quem instalou por lá.
 
 ## Publicação no Marketplace / Toolbox
 

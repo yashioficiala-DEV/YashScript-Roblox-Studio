@@ -122,43 +122,6 @@ LOGS/                 Documentação, exemplos (.yash) e notas de desenvolviment
 ```
 
 > **Atualização para usuários:** basta rodar o `instalar.cmd` de novo e escolher `1`.
-> Para o caminho do Marketplace/Toolbox, ao republicar o plugin o Studio atualiza
-> automaticamente quem instalou por lá.
-
-## Publicação no Marketplace / Toolbox
-
-O plugin pode ser distribuído publicamente para outros usuários do Roblox Studio.
-
-### Opção A — Publicar na Toolbox (gratuito, apenas para você)
-
-Para deixar disponível **só para a sua conta** (aba Inventory/Creations da Toolbox):
-
-1. No Studio, no Explorer, selecione o script do plugin.
-2. Menu **Plugins** → **Publish as Plugin**.
-3. Opcional: clique na imagem padrão no canto superior e envie uma thumbnail **512×512**.
-4. Preencha: **Name**, **Description**, **Creator**.
-5. Clique em **Submit**. O plugin fica disponível na Toolbox em **Inventory** e **Creations**.
-
-### Opção B — Distribuir no Creator Store (público, para todos)
-
-Para que **qualquer pessoa** possa instalar pelo Marketplace:
-
-**Requisitos da conta** (verifique no [Creator Hub](https://create.roblox.com/docs/marketplace/publish-to-marketplace) e [Marketplace Policy](https://create.roblox.com/docs/marketplace/marketplace-policy)):
-- Verificação de identidade (ID) ou conta parental vinculada
-- Verificação em 2 etapas ativada
-- **Roblox Plus** ou **Premium 1000/2200** (para manter o item à venda)
-- Advance de publicação
-
-**Passos gerais:**
-1. Crie o plugin em um Studio **visitado/aberto** (o plugin precisa existir como um `Plugin` no Explorer, não só na pasta local).
-2. No Explorer, clique com o botão direito no objeto e selecione **Save to Roblox**.
-3. Em **Submit As**, selecione **Plugin**.
-4. Preencha título, descrição, criador e thumbnail.
-5. Envie para moderação. Depois de aprovado, publique pelo **Creator Dashboard**.
-
-> **Nota:** o código do plugin local (`Plugins/YashScript/plugin.lua`) **não** é publicado
-> diretamente — você precisa criar um Plugin no Studio contendo esse código (cole o conteúdo
-> do `plugin.lua` em um Plugin script) e publicar esse objeto.
 
 ## Suporte
 

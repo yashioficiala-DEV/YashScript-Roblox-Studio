@@ -1,7 +1,6 @@
 @echo off
 setlocal EnableExtensions
 title YashScript - Instalador / Desinstalador
-chcp 65001 >nul 2>nul
 
 set "URL=https://raw.githubusercontent.com/yashioficiala-DEV/YashScript-Roblox-Studio/main/dist/YashScript-Instalador.zip"
 set "DEST=%LOCALAPPDATA%\Roblox\Plugins\YashScript"

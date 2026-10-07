@@ -1,0 +1,15 @@
+# Dependencias de build (instale com: npm install)
+node_modules/
+
+# Pasta interna da ferramenta .qoder (vazia)
+.qoder/
+
+# Backups
+*.bak-*
+
+# Screenshots de desenvolvimento
+LOGS/*.PNG
+
+# Artefatos gerados pelos scripts de debug/insercao (a pasta _varios do zip)
+testes/inserir_demo*.lua
+dist/_varios/

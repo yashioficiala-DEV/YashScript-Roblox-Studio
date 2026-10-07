@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Guia interativo e dicionário pesquisável da linguagem YashScript V8 para Roblox.">
+<title>YashScript V8 — Guia da linguagem</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#111a2d;--panel2:#17233b;--line:#263550;--text:#e8eef8;--muted:#9cabc2;--cyan:#58d2e6;--green:#8ce0ae;--code:#080d18;--gold:#f0c674}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.65 system-ui,"Segoe UI",sans-serif}header{padding:30px max(24px,calc((100vw - 1200px)/2));background:linear-gradient(120deg,#12223a,#0b1020 75%);border-bottom:1px solid var(--line)}header h1{font-size:clamp(28px,5vw,42px);line-height:1.15;margin:0 0 10px}header h1 span{color:var(--cyan)}header p{color:var(--muted);margin:0;max-width:780px}.wrap{max-width:1200px;margin:auto;padding:24px}.tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);margin-bottom:22px}.tab{border:0;background:transparent;color:var(--muted);padding:12px 16px;font:inherit;cursor:pointer;border-bottom:2px solid transparent}.tab[aria-selected=true]{color:var(--cyan);border-color:var(--cyan)}.view[hidden]{display:none}.intro-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card,.detail,.entry-list,.searchbar,.category-box{background:var(--panel);border:1px solid var(--line);border-radius:12px}.card{padding:18px}.card h3{color:var(--green);margin:0 0 6px}.card p{margin:0;color:var(--muted)}h2{font-size:23px;margin:0 0 12px;color:var(--cyan)}h3{font-size:17px}.guide-block{margin-top:34px}.guide-block pre,.detail pre{background:var(--code);border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:9px;padding:16px;overflow:auto;color:#d9e8f7}code{font-family:Consolas,"Cascadia Code",monospace;color:#afe5f0}.guide-block p{color:var(--muted)}.dictionary{display:grid;grid-template-columns:220px minmax(240px,360px) minmax(300px,1fr);gap:14px;align-items:start}.category-box{padding:12px;position:sticky;top:12px}.category-box h3{margin:4px 8px 10px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}.category-button{width:100%;text-align:left;border:0;border-radius:7px;background:transparent;color:var(--text);padding:8px;cursor:pointer;font:inherit}.category-button:hover,.category-button.active{background:var(--panel2);color:var(--cyan)}.searchbar{padding:10px;margin-bottom:10px}.searchbar input{width:100%;background:transparent;border:0;outline:0;color:var(--text);font:inherit;padding:5px}.searchbar input::placeholder{color:#8292ab}.result-count{font-size:12px;color:var(--muted);padding:0 5px 8px}.entry-list{padding:7px;max-height:68vh;overflow:auto}.entry{display:block;width:100%;text-align:left;background:transparent;color:var(--text);border:0;border-radius:8px;padding:10px;cursor:pointer;font:inherit}.entry:hover,.entry.selected{background:var(--panel2)}.entry strong{display:block;color:var(--cyan);font:600 14px Consolas,monospace}.entry small{display:block;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.detail{padding:22px;min-height:300px}.detail h2{margin-bottom:4px}.detail .category-label{font-size:12px;color:var(--green);text-transform:uppercase;letter-spacing:.08em}.detail p{color:var(--muted)}.detail h3{margin:22px 0 5px;color:var(--green);font-size:14px}.detail pre{margin:7px 0;white-space:pre-wrap}.hint{border:1px solid #60522e;background:#211d13;color:#ead7a6;border-radius:8px;padding:11px 13px;margin-top:14px;font-size:13px}.empty{color:var(--muted);padding:16px}footer{border-top:1px solid var(--line);color:var(--muted);padding:20px 24px;text-align:center;font-size:13px}@media(max-width:900px){.dictionary{grid-template-columns:180px minmax(220px,1fr)}.detail{grid-column:1/-1}.entry-list{max-height:48vh}}@media(max-width:620px){.wrap{padding:16px}.intro-grid{grid-template-columns:1fr}.dictionary{grid-template-columns:1fr}.category-box{position:static}.category-box nav{display:flex;overflow:auto;gap:4px}.category-button{white-space:nowrap;width:auto}.entry-list{max-height:35vh}.detail{grid-column:auto}header{padding:24px 18px}}
+</style>
+</head>
+<body>
+<header><h1><span>YashScript</span> V8</h1><p>Guia de referência da linguagem para criar scripts no Roblox. Pesquise uma palavra, selecione-a e veja para que serve, como escrever e um exemplo direto.</p></header>
+<div class="wrap">
+<div class="tabs" role="tablist" aria-label="Seções do guia"><button class="tab" id="tab-guia" role="tab" aria-selected="true" aria-controls="view-guia">Guia rápido</button><button class="tab" id="tab-dicionario" role="tab" aria-selected="false" aria-controls="view-dicionario">Palavras e comandos</button></div>
+<section class="view" id="view-guia" role="tabpanel" aria-labelledby="tab-guia">
+<h2>Comece por aqui</h2><div class="intro-grid"><article class="card"><h3>Uma linha por instrução</h3><p>Escreva comandos em linhas separadas. Use <code>#</code> para comentários e feche cada bloco com <code>fim</code>.</p></article><article class="card"><h3>Declare referências</h3><p><code>usar</code> dá um nome curto a um serviço, objeto ou propriedade do Roblox.</p></article><article class="card"><h3>Escolha o script certo</h3><p>Interface e eventos de mouse rodam no cliente: use um <code>LocalScript</code>. A classe do script define o contexto.</p></article></div>
+<div class="guide-block"><h2>Exemplo: botão de menu</h2><p>O botão cresce quando o cursor entra e volta ao tamanho normal quando sai. Coloque o código em um LocalScript e crie o botão no mesmo script: um alvo de evento só resolve se ele for criado aqui ou declarado com <code>usar</code>.</p><pre><code>criar botao "Jogar"
+    texto = "Jogar"
+    posicao = (0, 0, 0)
+    tamanho = (180, 52)
+fim
+
+quando mouse_em Jogar
+    animar("Jogar") crescer + escala = 1.08 + duracao = 0.15
+fim
+
+quando mouse_sair Jogar
+    animar("Jogar") diminuir + escala = 1 + duracao = 0.15
+fim
+
+quando clicar Jogar
+    print("Começando")
+fim</code></pre><p>Abra <b>Palavras e comandos</b> para consultar a sintaxe reconhecida pela linguagem.</p></div>
+<div class="guide-block"><h2>Variáveis e expressões</h2><p>Declare valores reutilizáveis e combine números, texto e referências. A variável fica disponível nos comandos e eventos do mesmo script.</p><pre><code>variavel Base = 2
+variavel Multiplicador = 3
+variavel Total = Base + Multiplicador * 4
+variavel Mensagem = "Total: " .. Total
+
+se Total &gt; 10 e Base &gt;= 2
+    print(Mensagem)
+fim</code></pre><p><a href="fundamentos.yash">Abrir exemplo de fundamentos</a></p></div>
+<div class="guide-block"><h2>Funções, parâmetros e retorno</h2><p>Crie uma função reutilizável, receba valores pelos parâmetros e devolva um resultado com <code>retornar</code>. Variáveis declaradas em funções, ações e callbacks de evento são locais e começam de novo a cada execução. A função pode ser chamada em uma expressão ou sozinha para executar comandos.</p><pre><code>criar funcao Somar(a, b)
+    retornar a + b
+fim
+
+variavel Total = Somar(2, 3)
+Somar(Total, 4)</code></pre><p><a href="funcoes.yash">Abrir exemplo de funções</a> · <a href="escopos_funcao.yash">Ver escopo de funções e ações</a> · <a href="escopos_evento.yash">Ver escopo de callbacks</a></p></div>
+<div class="guide-block"><h2>Listas e tabelas</h2><p>Use chaves para criar uma tabela. Valores sem chave formam uma lista; pares <code>nome = valor</code> formam campos nomeados. Acesse posições numéricas ou chaves calculadas com colchetes e campos nomeados com ponto.</p><pre><code>variavel Inventario = {"espada", "escudo"}
+variavel Dados = {pontos = 10, ganho = 2}
+Inventario[2] = "lanca"
+Dados["pontos"] += Dados.ganho</code></pre><p><a href="colecoes.yash">Abrir exemplo de coleções</a></p></div>
+<div class="guide-block"><h2>Laços e coleções</h2><p><code>para</code> percorre um intervalo inclusivo. <code>para cada</code> percorre listas com <code>ipairs</code>; com dois nomes, percorre chaves e valores de um mapa com <code>pairs</code>. <code>repita ... ate</code> executa pelo menos uma vez e verifica a condição no final. Use <code>pare</code> para sair do laço atual e <code>continuar</code> para pular para a próxima repetição.</p><pre><code>variavel Dados = {pontos = 10, ganho = 2}
+
+para indice de 1 ate 5 passo 2
+    print(indice)
+    se indice == 3
+        pare
+    fim
+fim
+
+para cada chave, valor em Dados
+    print(chave)
+    print(valor)
+fim</code></pre><p><a href="repeticoes.yash">Abrir exemplo de laços</a></p></div>
+<div class="guide-block"><h2>Câmera fixa em uma peça</h2><p>Em um LocalScript, marque a câmera como <code>Scriptable</code> e copie o CFrame de uma peça chamada <code>CameraPart</code>. O exemplo completo inclui a volta ao controle normal quando o jogador clica em Jogar.</p><pre><code>usar "Camera" = workspace.CurrentCamera
+usar "CameraPart" = workspace.CameraPart
+
+quando iniciar
+    Camera.CameraType = Scriptable
+    Camera.CFrame = CameraPart.CFrame
+fim</code></pre><p><a href="menu_camera.yash">Abrir o exemplo completo do menu</a></p></div>
+<div class="guide-block"><h2>Valores e referências</h2><pre><code>usar "Porta" = workspace.Porta
+Porta.ancorado = falso
+Porta.transparencia = 0.25
+
+se Porta.ancorado == falso
+    print("A porta está solta")
+fim</code></pre></div>
+<div class="guide-block"><h2>Números e textos</h2><p>Números aceitam notação científica, com ou sem sinal no expoente. Sem valor à esquerda, <code>e</code> é expoente; entre dois valores, <code>e</code> é o operador lógico, então <code>1 e -7</code> continua sendo uma expressão lógica. Textos aceitam acentos em UTF-8 direto e os escapes de aspa, barra invertida, quebra de linha, retorno de carro, tabulação e código decimal de 3 dígitos.</p><pre><code>variavel Pequeno = 1e-7
+variavel Grande = 2.5E+3
+variavel Aviso = "linha 1\nlinha 2"
+print(Aviso, Pequeno, Grande)</code></pre></div>
+<div class="guide-block"><h2>Cores</h2><p>Use sempre <code>rgb(r, g, b)</code> para cores. Entre nomes, o gerador só traduz <code>preto</code> e <code>branco</code> (e <code>black</code>/<code>white</code>), e apenas nas propriedades <code>cor</code>, <code>cor_texto</code>, <code>cor_borda</code> e <code>fundo</code>. Qualquer outro nome, como <code>vermelho</code> ou <code>azul</code>, não é traduzido: vira uma string inválida em elementos de interface e é descartado em formas 3D.</p><pre><code>criar painel "Aviso"
+    cor = rgb(40, 60, 90)
+    cor_texto = branco
+    cor_borda = rgb(90, 110, 140)
+    arredondamento = 8
+    largura = 320
+    altura = 80
+fim</code></pre></div>
+<div class="guide-block"><h2>Limitações conhecidas do V8</h2><p>Estes pontos foram verificados contra o gerador atual e vale conferir antes de usar:</p><p><b><code>jogador</code> é só sujeito lógico.</b> Ele funciona em <code>quando jogador tocar</code>, e o corpo do handler recebe <code>_YashPersonagem</code>, que é o Model do personagem, não o Player. Em qualquer outra posição, é um nome comum: declare-o com <code>usar "jogador" = ...</code> ou <code>criar objeto 'jogador'</code>.</p><p><b>Não há alias pronto para o jogador local.</b> <code>Players.LocalPlayer</code> gera <code>Players:WaitForChild("LocalPlayer")</code>, que não funciona, porque <code>LocalPlayer</code> é uma propriedade do serviço e não um filho. O nome solto <code>LocalPlayer</code> também não é resolvido.</p><p><b>Retorno de método não é suportado.</b> Uma chamada como <code>T:find("b")</code>, que devolve dois resultados, não pode ser usada como valor.</p><p><b><code>incluir</code> depende do host.</b> O plugin do Studio não lê arquivos do computador, então <code>incluir "arquivo.yash"</code> só resolve se o compilador receber o conteúdo do arquivo.</p><p><b>Removidos em V8 por não terem tradução:</b> <code>principal</code>, <code>servidor</code> no início do arquivo, o sufixo <code>YASHSCRIPT: servidor</code> ou <code>YASHSCRIPT: cliente</code>, <code>transicao</code>, <code>controlavel</code> e <code>sombra</code>. Agora dão erro explícito em vez de serem descartados em silêncio. O contexto do script sempre veio da classe do Script no Studio, nunca do texto.</p></div>
+</section>
+<section class="view" id="view-dicionario" role="tabpanel" aria-labelledby="tab-dicionario" hidden>
+<h2>Palavras e comandos</h2><p style="color:var(--muted);margin-top:0">Pesquise em português ou pelo nome Roblox. Selecione um resultado para ver a descrição, a forma de uso e um exemplo. Os exemplos usam nomes como <code>Porta</code> ou <code>Jogar</code> já declarados com <code>usar</code> ou criados com <code>criar</code>; adapte ao seu script.</p>
+<div class="dictionary"><aside class="category-box"><h3>Categorias</h3><nav id="categories" aria-label="Categorias do dicionário"></nav></aside><div><label class="searchbar"><input id="search" type="search" placeholder="Pesquisar palavra, comando ou propriedade…" autocomplete="off" aria-label="Pesquisar no dicionário"></label><div class="result-count" id="result-count" aria-live="polite"></div><div class="entry-list" id="entry-list" role="listbox" aria-label="Resultados"></div></div><article class="detail" id="detail" aria-live="polite"><span class="category-label">Dicionário YashScript V8</span><h2>Escolha uma palavra</h2><p>Use a pesquisa ou navegue pelas categorias. Cada verbete inclui a sintaxe que a linguagem reconhece e um exemplo.</p></article></div>
+</section>
+</div>
+<footer>YashScript V8 · Referência interativa da linguagem</footer>
+<script>
+const entries=[];
+function add(words,category,description,syntax,example,extra=""){for(const word of words){entries.push({word,category,description,syntax,example,extra})}}
+ add(["YASHSCRIPT"],"Estrutura","Cabeçalho opcional que identifica um arquivo YashScript. O contexto vem da classe do script no Studio (Script, LocalScript ou ModuleScript), nunca do texto.","YASHSCRIPT:","YASHSCRIPT:");
+add(["incluir"],"Estrutura","Inclui o conteúdo de outro arquivo YashScript quando o compilador recebe esse arquivo.","incluir \"arquivo.yash\"","incluir \"utilidades.yash\"","O ambiente do plugin do Studio não lê arquivos locais automaticamente.");
+add(["usar"],"Estrutura","Cria um alias para um serviço, objeto ou propriedade e permite reutilizá-lo pelo nome.","usar \"Nome\" = caminho","usar \"Porta\" = workspace.Porta");
+add(["fim"],"Estrutura","Fecha blocos como eventos, condições, ações, cenas, interfaces e mundos.","fim","se Porta.ancorado\n    print(\"Travada\")\nfim");
+add(["criar"],"Instâncias e interface","Declara instâncias, elementos de interface, formas, cenas, estilos, ações, animações, HUDs e objetos de dados.","criar <tipo> \"Nome\"\n    propriedade = valor\nfim","criar esfera \"Moeda\"\n    posicao = (0, 4, 0)\n    cor = rgb(255, 200, 0)\nfim");
+add(["painel","texto","botao","campo","imagem","elemento"],"Instâncias e interface","Tipos de interface aceitos após <code>criar</code>. São criados no cliente.","criar <tipo> \"Nome\"\n    propriedade = valor\nfim","criar botao \"Jogar\"\n    texto = \"Jogar\"\n    tamanho = (180, 52)\nfim");
+add(["bloco","esfera","cilindro","cunha","paralelepipedo","plataforma"],"Instâncias e interface","Tipos de formas 3D que podem ser criadas no Workspace.","criar <tipo> \"Nome\"\n    propriedade = valor\nfim","criar bloco \"Piso\"\n    posicao = (0, 0, 0)\n    ancorado = verdadeiro\nfim");
+add(["cena"],"Instâncias e interface","Define um grupo visual que pode ser mostrado, escondido ou alternado.","criar cena \"Nome\"\n    mostrar = verdadeiro\nfim","criar cena \"Menu\"\n    mostrar = verdadeiro\nfim");
+add(["estilo"],"Instâncias e interface","Define propriedades reutilizáveis para aplicar aos elementos de interface.","criar estilo \"Nome\"\n    propriedade = valor\nfim","criar estilo \"Destaque\"\n    cor = rgb(40, 120, 220)\nfim");
+add(["objeto"],"Instâncias e interface","Cria um objeto de dados com propriedades definidas no bloco.","criar objeto \"Nome\"\n    propriedade = valor\nfim","criar objeto \"JogadorDados\"\n    vida = 100\nfim");
+add(["acao"],"Ações e animações","Define um bloco reutilizável de comandos, chamado com <code>executar acao</code> ou <code>chamar acao</code>.","criar acao \"Nome\"\n    comandos\nfim","criar acao \"Avisar\"\n    print(\"Pronto\")\nfim\n\nexecutar acao Avisar");
+add(["animacao"],"Ações e animações","Define uma sequência de propriedades ou efeitos para uma animação nomeada.","criar animacao \"Nome\"\n    animacao = efeito\nfim","criar animacao \"Entrada\"\n    animacao = fade in + duracao = 0.4\nfim");
+add(["hud"],"Instâncias e interface","Cria uma exibição simples ligada a um campo de um objeto de dados.","criar hud \"Nome\"\n    mostrar objeto.campo\nfim","criar objeto 'Dados'\n    vida = 100\nfim\n\ncriar hud \"VidaHUD\"\n    mostrar Dados.vida\nfim","O campo vem de um objeto declarado no mesmo script. Um nome não declarado, como `jogador`, faz a geração falhar.");
+add(["site"],"Instâncias e interface","Declara propriedades da interface principal criada pelo script.","site\n    fundo = rgb(r, g, b)\nfim","site\n    fundo = rgb(20, 24, 35)\nfim","Exige contexto de cliente. <code>largura</code>, <code>altura</code> e <code>arredondamento</code> só têm efeito em elementos criados com <code>criar</code>, não aqui.");
+add(["mundo"],"Instâncias e interface","Configura propriedades de iluminação e ambiente do mundo.","mundo\n    propriedade = valor\nfim","mundo\n    brilho = 2\nfim");
+add(["quando"],"Eventos","Abre um handler de evento. O bloco é encerrado por <code>fim</code>.","quando <evento> [alvo]\n    comandos\nfim","quando clicar Jogar\n    print(\"Iniciando\")\nfim");
+add(["iniciar","carregar"],"Eventos","Eventos sem alvo: executam comandos quando o script inicia ou termina de carregar.","quando <evento>\n    comandos\nfim","quando iniciar\n    print(\"Menu pronto\")\nfim");
+add(["clicar","mouse_em","mouse_sair"],"Eventos","Eventos de botão para clique, entrada do mouse e saída do mouse.","quando <evento> Botao\n    comandos\nfim","quando mouse_em Jogar\n    animar(\"Jogar\") crescer + escala = 1.08\nfim");
+add(["tocar","encostar"],"Eventos","Detecta a colisão de uma peça com outra peça ou com um jogador. Também use <code>tocar som</code> para áudio.","quando tocar Objeto\n    comandos\nfim","quando tocar Moeda\n    destruir objeto Moeda\nfim","No evento, o argumento recebido é a peça que encostou.");
+add(["jogador","player"],"Eventos","Sujeito lógico de <code>tocar</code>: o handler só roda quando quem encostou é um personagem com Humanoid. <code>player</code> é sinônimo.","quando jogador tocar Objeto\n    comandos\nfim","criar bloco \"Moeda\"\n    ancorado = verdadeiro\nfim\n\nquando jogador tocar Moeda\n    print(_YashPersonagem.Name)\nfim","Não é uma referência ao Player: dentro do handler, <code>_YashPersonagem</code> é o Model do personagem que encostou. Fora de <code>quando ... tocar</code>, <code>jogador</code> é um nome comum e precisa ser declarado com <code>usar</code> ou <code>criar objeto</code>.");
+add(["se"],"Condições e fluxo","Executa um bloco quando a condição é verdadeira. Também pode aparecer no nível principal do arquivo.","se condição\n    comandos\n[senao\n    comandos]\nfim","se Porta.ancorado == verdadeiro\n    print(\"Travada\")\nsenao\n    print(\"Aberta\")\nfim");
+add(["senao"],"Condições e fluxo","Define um ramo alternativo de <code>se</code>. Pode ser seguido por <code>se condição</code> para testar outra condição.","senao se condição\n    comandos\nsenao\n    comandos","se Pontos >= 100\n    print(\"Ouro\")\nsenao se Pontos >= 50\n    print(\"Prata\")\nsenao\n    print(\"Bronze\")\nfim");
+add(["senao se"],"Condições e fluxo","Testa uma condição alternativa se os ramos anteriores de <code>se</code> forem falsos. Pode haver vários ramos antes do <code>senao</code> final.","se condição\n    comandos\nsenao se outra_condição\n    comandos\nsenao\n    comandos\nfim","se Nivel == 1\n    print(\"Iniciante\")\nsenao se Nivel == 2\n    print(\"Intermediário\")\nsenao\n    print(\"Avançado\")\nfim");
+add(["enquanto"],"Condições e fluxo","Repete comandos enquanto a condição continuar verdadeira.","enquanto condição\n    comandos\nfim","enquanto Contador < 3\n    Contador += 1\n    esperar 0.1\nfim");
+add(["a cada"],"Condições e fluxo","Executa repetidamente o bloco no intervalo indicado em segundos.","a cada segundos\n    comandos\nfim","a cada 1\n    print(\"Um segundo\")\nfim");
+add(["e","and"],"Condições e fluxo","Exige que as duas condições sejam verdadeiras.","condição e condição","se Porta.ancorado e Porta.visivel\n    print(\"Porta travada e visível\")\nfim");
+add(["ou","or"],"Condições e fluxo","Aceita a condição se pelo menos um dos lados for verdadeiro.","condição ou condição","se Porta.ancorado ou Porta.visivel\n    print(\"Uma condição vale\")\nfim");
+add(["não","nao","not"],"Condições e fluxo","Inverte uma condição booleana.","não condição","se nao Porta.ancorado\n    print(\"Porta solta\")\nfim");
+add(["entao"],"Condições e fluxo","Palavra opcional depois da condição de <code>se</code>.","se condição entao","se Porta.ancorado entao\n    print(\"Travada\")\nfim");
+add(["<",">","<=",">=","=","==","!="],"Condições e fluxo","Compara dois valores em condições. <code>=</code> e <code>==</code> indicam igualdade; <code>!=</code> indica diferença.","se valor operador valor","variavel Vida = 10\nse Vida > 0\n    print(\"Vivo\")\nfim","Os dois lados devem existir. Um nome não declarado, como <code>jogador</code>, faz a geração falhar.");
+add(["visivel","oculto"],"Condições e fluxo","Testa se um elemento de interface está visível ou oculto.","se visivel(\"Elemento\")","se visivel(\"Jogar\")\n    print(\"Botão aparece\")\nfim");
+add(["apertar"],"Condições e fluxo","Testa se uma tecla está pressionada. Disponível no cliente.","se teclado apertar tecla","se teclado apertar E\n    print(\"E pressionado\")\nfim");
+add(["perto","longe","distancia","de","menor","maior","que"],"Condições e fluxo","Compara a distância entre dois objetos ou verifica se um está perto/longe do outro.","se distancia A de B menor que número","se distancia Jogador de Moeda menor que 10\n    print(\"Perto\")\nfim");
+add(["vivo","morto"],"Condições e fluxo","Testa se o alvo tem vida acima de zero ou se morreu.","se Alvo vivo","se Inimigo morto\n    print(\"Fim\")\nfim");
+add(["criado","com","sucesso"],"Condições e fluxo","Verifica o resultado de uma operação de criação identificada pelo nome. O suporte depende da operação usada.","se \"Nome\" criado com sucesso","se \"Moeda\" criado com sucesso\n    print(\"Criada\")\nfim");
+add(["print"],"Comandos","Escreve zero ou mais expressões no console de saída. Argumentos podem incluir chamadas de função e operadores.","print(expressão1, expressão2, …)","criar funcao Somar(a, b)\n    retornar a + b\nfim\nprint(\"Total:\", Somar(2, 3))");
+add(["mostrar","esconder","alternar"],"Interface e cenas","Mostra, esconde ou alterna a visibilidade de um elemento ou cena.","mostrar Elemento\nesconder Elemento\nalternar(Elemento)","mostrar Jogar\nesconder Painel");
+add(["texto"],"Interface e cenas","Com a forma <code>mostrar texto</code>, envia uma mensagem simples. Como tipo de criação, define um elemento de texto.","mostrar texto \"mensagem\"","mostrar texto \"Bem-vindo!\"");
+add(["mudar"],"Interface e cenas","Troca para uma cena definida anteriormente.","mudar cena Nome","mudar cena Jogo");
+add(["animar"],"Interface e cenas","Anima propriedades ou aplica um efeito visual em um alvo usando TweenService.","animar(\"Alvo\") efeito + duracao = segundos","animar(\"Jogar\") crescer + escala = 1.08 + duracao = 0.2");
+add(["executar","chamar"],"Ações e animações","Executa uma ação ou uma animação criada com <code>criar acao</code> ou <code>criar animacao</code>.","executar acao Nome\nchamar animacao Nome","executar acao Avisar");
+add(["destruir","remover"],"Comandos","Destrói uma instância de objeto ou elemento.","destruir objeto Alvo\ndestruir elemento Alvo","destruir objeto Moeda");
+add(["somar","subtrair"],"Comandos","Soma ou subtrai o valor de uma referência de dados de outra.","somar Origem a Destino\nsubtrair Origem de Destino","criar objeto 'Moedas'\n    total = 10\nfim\n\nsomar Recompensa a Moedas.total");
+add(["esperar","aguardar"],"Comandos","Pausa a execução pelo número de segundos indicado.","esperar segundos","aguardar 0.5");
+add(["causar dano"],"Comandos de jogo","Aplica dano ao alvo. Em um Humanoid chama TakeDamage; em dados compatíveis reduz vida.","causar dano Alvo quantidade","causar dano Inimigo 20");
+add(["curar"],"Comandos de jogo","Restaura vida até o máximo do Humanoid ou do objeto de dados.","curar Alvo quantidade","curar Inimigo 25");
+add(["matar"],"Comandos de jogo","Zera a vida do Humanoid ou do objeto de dados.","matar Alvo","matar Inimigo");
+add(["respawnar"],"Comandos de jogo","Solicita um novo personagem para o jogador indicado.","respawnar Jogador","respawnar Jogador","O alvo precisa ser um Player já declarado, com <code>usar \"Jogador\" = ...</code> ou <code>criar objeto</code>.");
+add(["teleportar"],"Comandos de jogo","Move um objeto ou modelo para uma posição 3D.","teleportar Alvo (x, y, z)","teleportar Bau (0, 5, 0)");
+add(["mover"],"Comandos de jogo","Move um objeto para uma posição; a velocidade é opcional.","mover Alvo para (x, y, z) [velocidade N]","mover Plataforma para (10, 0, 0) velocidade 8");
+add(["rotacionar"],"Comandos de jogo","Anima a rotação de um objeto para ângulos x, y e z.","rotacionar Alvo para (x, y, z) [duracao segundos]","rotacionar Porta para (0, 90, 0) duracao 0.5");
+add(["sortear"],"Comandos de jogo","Cria ou atualiza uma variável com inteiro aleatório dentro do intervalo indicado.","sortear Nome entre mínimo e máximo","sortear Sorteio entre 1 e 6");
+add(["tocar som"],"Comandos de jogo","Reproduz um áudio pelo ID informado.","tocar som ID","tocar som 12345678");
+add(["explodir"],"Comandos de jogo","Cria uma explosão no alvo. Raio e dano são opcionais; os padrões são raio 8 e dano 50.","explodir Alvo [raio N] [dano N]","explodir Barril raio 12 dano 80");
+add(["seguir"],"Comandos de jogo","Faz um Humanoid perseguir outro alvo ou move um modelo em direção a ele.","seguir Quem o Alvo","seguir Inimigo o Alvo");
+add(["clonar"],"Comandos de jogo","Clona um objeto e coloca a cópia no destino; o nome da cópia é opcional.","clonar Origem para Destino [como Nome]","clonar ReplicatedStorage.Modelos.Bau para workspace como BauNovo");
+add(["proibir"],"Comandos","Bloqueia comandos associados a um evento de interface sob as condições aceitas.","proibir evento Botao de comandos [se visivel(\"Alvo\")|somente \"texto\"]","proibir clicar Jogar de iniciar se visivel(\"Carregando\")","Eventos aceitos: clicar, mouse_em e mouse_sair.");
+add(["número","numero"],"Valores","Aceita números inteiros e decimais, com notação científica e sinal opcional no expoente, como <code>1e-7</code> e <code>2.5E+3</code>.","número | 1e-7 | 2.5E+3","variavel Pequeno = 1e-7\nvariavel Grande = 2.5E+3");
+add(["texto entre aspas","string"],"Valores","Texto literal delimitado por aspas simples ou duplas. Acentos em UTF-8 podem ser escritos direto.","\"texto\"","print(\"Bem-vindo!\")","Escapes aceitos: aspa, barra invertida, quebra de linha, retorno de carro, tabulação e código decimal de 3 dígitos. Entre dois valores, <code>e</code> é o operador lógico.");
+add(["tupla"],"Valores","Grupo numérico entre parênteses usado para posições 3D e tamanhos ou posições de interface.","(x, y) | (x, y, z)","teleportar Personagem (0, 5, 0)");
+add(["caminho"],"Valores","Sequência de nomes separada por pontos para localizar serviços, objetos e propriedades.","serviço.objeto.propriedade","usar \"Porta\" = workspace.Portas.Entrada");
+add(["+=","-=","+"],"Operadores","<code>+=</code> e <code>-=</code> atualizam uma variável ou propriedade. O sinal <code>+</code> compõe efeitos e parâmetros de animação.","Variavel += valor | Variavel -= valor","usar \"Contador\" = workspace.Contador.Value\nContador += 1");
+add(["#"],"Estrutura","Inicia um comentário até o fim da linha.","# comentário","# Ajusta o menu\nmostrar Jogar");
+add(["variavel","var","let"],"Variáveis e expressões","Declara uma variável com valor inicial opcional. No nível do script, ela é compartilhada entre seus comandos e eventos; dentro de funções, ações e callbacks de evento, é local à execução.","variavel Nome = expressão","variavel Pontos = 0\nPontos += 1\n\ncriar funcao Contar()\n    variavel Local = 0\n    Local += 1\n    retornar Local\nfim");
+add(["aritmetica"],"Variáveis e expressões","Expressões combinam valores usando cálculos, comparações, lógica e concatenação de texto.","expressão operador expressão","variavel Total = Base + Multiplicador * 4");
+add(["+","-","*","/","//","%","^",".."],"Variáveis e expressões","Soma, subtração, multiplicação, divisão, divisão inteira, resto, potência e concatenação de texto.","valor operador valor","variavel Area = largura * altura\nvariavel Label = \"Area: \" .. Area");
+add(["funcao","função"],"Funções","Define uma função reutilizável com parâmetros. Variáveis declaradas dentro dela são locais à função e não compartilham estado entre chamadas.","criar funcao Nome(parametro1, parametro2)\n    comandos\nfim","criar funcao Contar()\n    variavel Local = 0\n    Local += 1\n    retornar Local\nfim\nContar()\nContar()");
+add(["retornar","devolver"],"Funções","Encerra a função atual e, se houver valor, devolve o resultado à chamada.","retornar [expressão]","retornar Pontos * Multiplicador");
+add(["chamada de função","argumento","parâmetro","parametro"],"Funções","Uma chamada executa uma função declarada e pode ser usada como expressão. Os argumentos são avaliados na ordem dos parâmetros.","Nome(argumento1, argumento2)","criar funcao Somar(a, b)\n    retornar a + b\nfim\nvariavel Total = Somar(2, 3)");
+add(["tabela","lista","coleção","colecao"],"Tabelas e listas","Cria uma tabela Luau. Campos sem chave formam uma lista numérica; campos com chave guardam valores nomeados. Aceita chaves dinâmicas entre colchetes.","{valor1, valor2, nome = valor, [chave] = valor}","variavel Inventario = {\"espada\", \"escudo\"}\nvariavel Dados = {pontos = 10, ganho = 2}");
+add(["índice","indice","colchetes","chave"],"Tabelas e listas","Lê ou atualiza um item usando uma chave ou posição. Listas usam índices a partir de 1, como em Luau.","Tabela[chave] | Tabela[chave] = valor","Inventario[2] = \"lanca\"\nDados[\"pontos\"] += 1");
+add(["atribuição por índice","atribuição composta por índice"],"Tabelas e listas","Atribui ou atualiza um valor de tabela por índice. A tabela e a chave são avaliadas uma vez antes da escrita.","Tabela[chave] = expressão | Tabela[chave] += expressão | Tabela[chave] -= expressão","Dados[\"pontos\"] += Dados.ganho");
+add(["para","cada"],"Laços","Repete comandos em um intervalo ou nos elementos de uma coleção. Um nome percorre os valores de uma lista; dois nomes percorrem chave e valor de um mapa.","para Nome de início ate limite [passo incremento] ... fim\npara cada valor em Lista ... fim\npara cada chave, valor em Mapa ... fim","para indice de 1 ate 5 passo 2\n    print(indice)\nfim\n\npara cada chave, valor em Dados\n    print(valor)\nfim");
+add(["repita"],"Laços","Executa o bloco ao menos uma vez e então verifica a condição indicada por ate. O corpo também aceita pare e continuar.","repita\n    comandos\nate condição","variavel Tentativas = 0\nrepita\n    Tentativas += 1\nate Tentativas >= 3");
+add(["de","ate","passo","em","ipairs","pairs"],"Laços","Palavras e iteradores usados para declarar o intervalo numérico ou a coleção de um laço.","para i de início ate limite passo incremento | para cada item em coleção","para i de 1 ate 10 passo 1\n    print(i)\nfim");
+add(["pare"],"Laços","Encerra imediatamente o laço mais interno. Só pode ser usado dentro de um laço.","pare","para cada valor em Valores\n    se valor == 0\n        pare\n    fim\nfim");
+add(["continuar"],"Laços","Pula o restante da repetição atual e começa a próxima. Só pode ser usado dentro de um laço.","continuar","para cada valor em Valores\n    se valor == 0\n        continuar\n    fim\n    Soma += valor\nfim");
+add(["rgb"],"Valores","Cria uma cor com componentes de vermelho, verde e azul entre 0 e 255.","rgb(vermelho, verde, azul)","cor = rgb(255, 200, 0)");
+add(["sim","verdadeiro","falso","nao","nulo"],"Valores","Valores lógicos e valor vazio reconhecidos pela linguagem.","sim | verdadeiro | falso | nao | nulo","Porta.ancorado = verdadeiro");
+add(["duracao"],"Animações","Define o tempo de uma animação em segundos.","duracao = segundos","animar(\"Painel\") fade out + duracao = 0.5");
+add(["delta","escala","graus"],"Animações","Parâmetros específicos de efeitos: distância do deslizamento, escala e ângulo de giro.","delta = N | escala = N | graus = N","animar(\"Jogar\") girar + graus = 8");
+add(["linear","suave","sine","senoidal","quad","quadratico","cubico","cubic","quart","quartico","quint","quintico","exponencial","expo","circular","circ","elastico","elastic","ressalto","bounce","voltar","back"],"Animações","Estilos de suavização disponíveis para tweens.","estilo = nome","animar(\"Jogar\") crescer + estilo = suave + duracao = 0.2");
+add(["entrada","in","saida","out","entrada_saida","inout"],"Animações","Direção da curva de suavização do tween.","direcao = entrada|saida|entrada_saida","animar(\"Painel\") fade in + direcao = entrada");
+add(["fade in","aparecer","fade out","desaparecer","sumir","slide left","esquerda","slide esquerda","slide right","direita","slide direita","slide up","subir","cima","slide cima","slide down","descer","baixo","slide baixo","pulsar","pulse","girar","spin","crescer","aumentar","diminuir","encolher"],"Animações","Efeitos visuais que podem ser usados com <code>animar</code> ou em uma definição de animação.","animar(\"Alvo\") efeito + duracao = segundos","animar(\"Painel\") fade out + duracao = 0.4");
+add(["debris","debrisservice","debisservice","workspace","replicatedstorage","serverstorage","serverscriptservice","players","lighting","runservice","userinputservice","tweenservice","soundservice","contextactionservice","httpservice","datastoreservice","marketplaceservice","collectionservice","physicsservice","textchatservice","chatwindowconfiguration","startergui","starterpack"],"Serviços Roblox","Nome de serviço Roblox que pode ser usado em caminhos e aliases. O serviço é resolvido pelo compilador conforme o contexto.","usar \"Alias\" = Serviço","usar \"Jogadores\" = Players");
+add(["mouse_em"],"Mouse e interface","Evento de entrada do cursor sobre um botão ou elemento elegível.","quando mouse_em Botao","quando mouse_em Jogar\n    animar(\"Jogar\") crescer + escala = 1.08\nfim");
+add(["mouse_sair"],"Mouse e interface","Evento de saída do cursor do botão ou elemento elegível.","quando mouse_sair Botao","quando mouse_sair Jogar\n    animar(\"Jogar\") diminuir\nfim");
+add(["a","cada"],"Estrutura","Formam o comando de repetição por intervalo.","a cada segundos","a cada 1\n    print(\"Atualização\")\nfim");
+add(["para","como"],"Sintaxe de comandos","Palavras que ligam origem, destino e nome em comandos como <code>clonar</code>, <code>mover</code> e <code>teleportar</code>.","clonar Origem para Destino como Nome","clonar ReplicatedStorage.Modelo para workspace como ModeloNovo");
+add(["entre","velocidade","duracao","raio","dano","som","animacao","de","o"],"Sintaxe de comandos","Palavras que introduzem parâmetros em comandos e declarações.","comando palavra valor","mover Plataforma para (0, 0, 10) velocidade 5");
+add(["como"],"Sintaxe de comandos","Define o nome da cópia criada por <code>clonar</code>.","clonar Origem para Destino como Nome","clonar ReplicatedStorage.Modelo para workspace como ModeloNovo");
+add(["fundo"],"Propriedades","Define a cor de fundo da interface principal declarada com <code>site</code>. Use <code>rgb(r, g, b)</code>.","site\n    fundo = rgb(r, g, b)\nfim","site\n    fundo = rgb(20, 24, 35)\nfim","Entre nomes de cor, apenas <code>preto</code> e <code>branco</code> (e <code>black</code>/<code>white</code>) são traduzidos; os demais viram uma string inválida.");
+add(["CameraType","cameratype"],"Câmera","Controla o modo da câmera atual.","Camera.CameraType = Scriptable","usar \"Camera\" = workspace.CurrentCamera\nCamera.CameraType = Scriptable","Use em um LocalScript.");
+add(["Scriptable","Custom","Attach","Track","Watch"],"Câmera","Valores aceitos por <code>Camera.CameraType</code>.","Camera.CameraType = valor","Camera.CameraType = Scriptable");
+add(["CurrentCamera","currentcamera"],"Câmera","Propriedade de <code>workspace</code> que referencia a câmera do jogador no cliente.","usar \"Camera\" = workspace.CurrentCamera","usar \"Camera\" = workspace.CurrentCamera");
+const properties={
+"visivel":"Visible","texto":"Text","vida":"Health","health":"Health","vida_maxima":"MaxHealth","max_vida":"MaxHealth","maxhealth":"MaxHealth","velocidade":"WalkSpeed","walkspeed":"WalkSpeed","jumppower":"JumpPower","position":"Position","size":"Size","cframe":"CFrame","name":"Name","parent":"Parent","transparency":"Transparency","visible":"Visible","enabled":"Enabled","ancorado":"Anchored","anchored":"Anchored","colisao":"CanCollide","cancollide":"CanCollide","material":"Material","color":"Color","rotation":"Rotation","transparente":"Transparency","posicao_3d":"Position","cor_3d":"Color","placeholder":"PlaceholderText","transparencia":"BackgroundTransparency","cor":"BackgroundColor3","cor_fundo":"BackgroundColor3","cor_texto":"TextColor3","cor_borda":"BorderColor3","borda":"BorderSizePixel","tamanho_fonte":"TextSize","fonte":"Font","imagem":"Image","ativo":"Active","selecionavel":"Selectable","auto":"AutoButtonColor","layout_order":"LayoutOrder","layout":"LayoutOrder","anchor_point":"AnchorPoint","z_index":"ZIndex","grupo":"GroupColor3","rotacao":"Rotation","estado":"State","modal":"Modal","exclusivo":"Exclusive","reset":"ResetOnSpawn","encerrado":"CloseOnEscape","tamanho":"Size","posicao":"Position","distancia_lateral":"AbsolutePosition","tamanho_absoluto":"AbsoluteSize"};
+for(const [word,roblox] of Object.entries(properties))add([word],"Propriedades",`Propriedade reconhecida e mapeada para <code>${roblox}</code>. A leitura ou gravação depende da classe e das regras da propriedade Roblox.`,`usar "Objeto" = workspace.Objeto\nObjeto.${word}`,`usar "Objeto" = workspace.Objeto\nprint(Objeto.${word})`,`Propriedade Roblox: ${roblox}.`);
+add(["metodo"],"Chamadas de método","Chama um método no alias de um objeto. O nome do método é encaminhado ao Luau; não há catálogo fechado, e os argumentos aceitam os valores simples reconhecidos pela linguagem.","Alias.Metodo(argumento)","usar \"Modelo\" = workspace.Modelo\nModelo.MoveTo((0, 5, 0))","O método precisa existir no tipo do objeto. O exemplo usa <code>Model:MoveTo(Vector3)</code>.");
+add(["cor","cor_texto","cor_borda","fundo"],"Propriedades","Atribui a cor de um elemento de interface. Prefira <code>rgb(r, g, b)</code>: entre nomes, só <code>preto</code> e <code>branco</code> (e <code>black</code>/<code>white</code>) são traduzidos.","cor = rgb(r, g, b)\ncor_texto = rgb(r, g, b)\ncor_borda = rgb(r, g, b)\nfundo = rgb(r, g, b)","criar painel \"Aviso\"\n    cor = rgb(40, 60, 90)\n    cor_texto = branco\n    cor_borda = rgb(90, 110, 140)\n    arredondamento = 8\nfim","Um nome fora de <code>preto</code>/<code>branco</code> não é traduzido: vira string inválida em elementos de interface e é descartado em formas 3D.");
+const categories=["Todas","Estrutura","Instâncias e interface","Eventos","Condições e fluxo","Comandos","Interface e cenas","Ações e animações","Comandos de jogo","Valores","Variáveis e expressões","Animações","Serviços Roblox","Propriedades","Sintaxe de comandos","Chamadas de método","Mouse e interface","Câmera"];
+let category="Todas", selected=null;
+const list=document.getElementById("entry-list"), search=document.getElementById("search"), detail=document.getElementById("detail"), count=document.getElementById("result-count");
+function esc(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
+function renderCategories(){document.getElementById("categories").innerHTML=categories.map(c=>`<button class="category-button ${category===c?"active":""}" type="button" data-category="${esc(c)}">${esc(c)}</button>`).join("");document.querySelectorAll("[data-category]").forEach(b=>b.onclick=()=>{category=b.dataset.category;renderCategories();renderList()})}
+function renderDetail(item){selected=item;detail.innerHTML=`<span class="category-label">${esc(item.category)}</span><h2><code>${esc(item.word)}</code></h2><p>${item.description}</p><h3>Como usar</h3><pre><code>${esc(item.syntax)}</code></pre><h3>Exemplo</h3><pre><code>${esc(item.example)}</code></pre>${item.extra?`<div class="hint">${item.extra}</div>`:""}`}
+function renderList(){const q=search.value.trim().toLocaleLowerCase("pt-BR");const found=entries.filter(e=>(category==="Todas"||e.category===category)&&(!q||`${e.word} ${e.category} ${e.description} ${e.syntax} ${e.example} ${e.extra}`.toLocaleLowerCase("pt-BR").includes(q))).sort((a,b)=>a.word.localeCompare(b.word,"pt-BR"));count.textContent=`${found.length} ${found.length===1?"resultado":"resultados"}`;list.innerHTML=found.length?found.map((e,i)=>`<button class="entry ${selected===e?"selected":""}" role="option" aria-selected="${selected===e}" data-index="${entries.indexOf(e)}"><strong>${esc(e.word)}</strong><small>${esc(e.category)} · ${e.description.replace(/<[^>]*>/g,"")}</small></button>`).join(""):'<p class="empty">Nenhuma palavra encontrada. Tente outro termo.</p>';list.querySelectorAll("[data-index]").forEach(b=>b.onclick=()=>{renderDetail(entries[Number(b.dataset.index)]);renderList()})}
+search.addEventListener("input",renderList);renderCategories();renderList();
+function switchTab(which){for(const name of ["guia","dicionario"]){const active=name===which;document.getElementById(`tab-${name}`).setAttribute("aria-selected",String(active));document.getElementById(`view-${name}`).hidden=!active}}
+document.getElementById("tab-guia").onclick=()=>switchTab("guia");document.getElementById("tab-dicionario").onclick=()=>switchTab("dicionario");
+</script>
+</body>
+</html>

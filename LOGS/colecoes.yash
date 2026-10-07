@@ -1,0 +1,15 @@
+YASHSCRIPT:
+variavel Inventario = {"espada", "escudo"}
+variavel Dados = { jogador = { pontos = 10, ganho = 2 } }
+
+Inventario[2] = "lanca"
+Dados["jogador"]["pontos"] += Dados.jogador.ganho
+Dados.jogador.resultado = Dados.jogador.pontos + 3
+
+criar funcao LerItem(indice)
+    retornar Inventario[indice]
+fim
+
+criar funcao LerPontos()
+    retornar Dados.jogador.resultado
+fim

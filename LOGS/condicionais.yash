@@ -1,0 +1,28 @@
+variavel Nivel = 2
+variavel Resultado = 0
+
+se Nivel == 1
+    Resultado = 10
+senao se Nivel == 2
+    Resultado = 20
+senao se Nivel == 3
+    Resultado = 30
+senao
+    Resultado = 40
+fim
+
+criar funcao Escolher(valor)
+    se valor == 1
+        retornar 10
+    senao se valor == 2
+        retornar 20
+    senao se valor == 3
+        retornar 30
+    senao
+        retornar 40
+    fim
+fim
+
+criar funcao ObterResultado()
+    retornar Resultado
+fim

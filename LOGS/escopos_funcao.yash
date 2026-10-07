@@ -1,0 +1,35 @@
+variavel Contador = 99
+
+criar funcao Proxima()
+    variavel Contador = 0
+    Contador += 1
+    retornar Contador
+fim
+
+criar funcao UsarMesmoNome()
+    variavel Contador = 7
+    retornar Contador
+fim
+
+criar funcao SomarGlobal(valor)
+    variavel Total = valor + Contador
+    retornar Total
+fim
+
+criar acao ContarAcao
+    variavel ContadorAcao = 0
+    ContadorAcao += 1
+    print(ContadorAcao)
+fim
+
+criar acao SairCedo
+    retornar
+    print("ERRO: ação não retornou")
+fim
+
+quando iniciar
+    executar acao ContarAcao
+    executar acao ContarAcao
+    executar acao SairCedo
+    print("acao-finalizada")
+fim

@@ -1,0 +1,37 @@
+YASHSCRIPT:
+variavel Valores = {1, 2, 3, 4}
+variavel Mapa = {madeira = 2, metal = 3}
+variavel Soma = 0
+variavel SomaMapa = 0
+variavel SomaPassos = 0
+variavel SomaAteTeto = 0
+variavel SomaRepita = 0
+
+para cada valor em Valores
+    Soma += valor
+fim
+
+para indice de 1 ate 5 passo 2
+    SomaPassos += indice
+fim
+
+para indice de 1 ate 10
+    se indice > 3
+        pare
+    fim
+    SomaAteTeto += indice
+fim
+
+para cada chave, valor em Mapa
+    SomaMapa += valor
+fim
+
+variavel ContagemRepita = 0
+repita
+    ContagemRepita += 1
+    SomaRepita += ContagemRepita
+ate ContagemRepita >= 3
+
+criar funcao Resultado()
+    retornar Soma + SomaMapa + SomaPassos + SomaAteTeto + SomaRepita
+fim

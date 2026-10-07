@@ -1,0 +1,14 @@
+YASHSCRIPT:
+variavel Base = 2
+variavel Multiplicador = 3
+variavel Total = Base + Multiplicador * 4
+variavel Mensagem = "Total: " .. Total
+
+se Total > 10 e Base >= 2
+    print(Mensagem)
+senao
+    print("Total baixo")
+fim
+
+Total += 1
+Total = (Total - Base) / Multiplicador

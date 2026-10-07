@@ -1,0 +1,58 @@
+incluir "visual.yash"
+
+criar painel 'Janela'
+    largura = 400
+    altura  = 300
+    posicao = (100, 100)
+    cena    = "Principal"
+    estilo  = "botao-padrao"
+fim
+
+criar texto 'titulo'
+    pai     = "Janela"
+    texto   = "Ola Mundo"
+    posicao = (20, 20)
+    tamanho_fonte = 20
+    estilo  = "textos"
+fim
+
+criar botao 'btn'
+    pai     = "Janela"
+    texto   = "Clique"
+    estilo  = "botao-padrao"
+    largura = 120
+    altura  = 40
+    posicao = (140, 200)
+fim
+
+criar botao 'btnSobre'
+    pai     = "Janela"
+    texto   = "Sobre"
+    estilo  = "botao-padrao"
+    largura = 120
+    altura  = 40
+    posicao = (140, 150)
+fim
+
+quando clicar 'btn'
+    mostrar texto "Voce clicou"
+    animacao = fade in + escala = +5
+fim
+
+quando clicar 'btnSobre'
+    mudar cena 'TelaSobre' animacao = fade in + duracao = 0.5
+fim
+
+quando mouse_em 'btn'
+    cor_borda = rgb(255,255,255)
+    borda     = 2
+fim
+
+quando mouse_sair 'btn'
+    cor_borda = rgb(80,80,80)
+    borda     = 1
+fim
+
+quando carregar
+    mostrar texto "Pagina pronta"
+fim

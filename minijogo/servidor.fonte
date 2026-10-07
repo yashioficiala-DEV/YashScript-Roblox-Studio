@@ -1,0 +1,144 @@
+YASHSCRIPT:
+
+mundo
+    ceu = rgb(112, 176, 255)
+    neblina = rgb(205, 226, 250)
+    neblina_inicio = 45
+    neblina_fim = 180
+fim
+
+criar plataforma 'chao'
+    posicao = (0, -1, 0)
+    tamanho = (80, 2, 80)
+    cor = rgb(74, 132, 94)
+    material = grama
+fim
+
+criar bloco 'paredeEsq'
+    posicao = (-19, 3, 0)
+    tamanho = (2, 6, 34)
+    cor = rgb(150, 150, 158)
+    material = concreto
+fim
+
+criar bloco 'paredeDir'
+    posicao = (19, 3, 0)
+    tamanho = (2, 6, 34)
+    cor = rgb(150, 150, 158)
+    material = concreto
+fim
+
+criar esfera 'moedaA'
+    posicao = (13, 2, 13)
+    tamanho = (2.5, 2.5, 2.5)
+    cor = rgb(255, 214, 0)
+    material = metal
+fim
+
+criar esfera 'moedaB'
+    posicao = (-13, 2, 13)
+    tamanho = (2.5, 2.5, 2.5)
+    cor = rgb(255, 214, 0)
+    material = metal
+fim
+
+criar esfera 'moedaC'
+    posicao = (0, 2, -15)
+    tamanho = (2.5, 2.5, 2.5)
+    cor = rgb(255, 214, 0)
+    material = metal
+fim
+
+criar esfera 'perigo'
+    posicao = (0, 3, 0)
+    tamanho = (3, 3, 3)
+    cor = rgb(224, 48, 48)
+    material = neon
+    vida = 3
+    controlavel = sim
+    velocidade = 10
+fim
+
+criar objeto 'heroi'
+    pontos = 0
+    tempo = 30
+    vidas = 3
+    terminou = 0
+fim
+
+criar acao 'vitoria'
+    se heroi.terminou = 0 entao
+        heroi.terminou = 1
+        print("VITORIA! 3 moedas coletadas antes do tempo!")
+    fim
+fim
+
+criar acao 'derrota'
+    se heroi.terminou = 0 entao
+        heroi.terminou = 1
+        print("DERROTA! Tente de novo")
+    fim
+fim
+
+criar acao 'pegouA'
+    heroi.pontos += 1
+    print(heroi.pontos)
+    moedaA.destruir()
+fim
+
+criar acao 'pegouB'
+    heroi.pontos += 1
+    print(heroi.pontos)
+    moedaB.destruir()
+fim
+
+criar acao 'pegouC'
+    heroi.pontos += 1
+    print(heroi.pontos)
+    moedaC.destruir()
+fim
+
+a cada 1
+    se heroi.terminou = 0 entao
+        heroi.tempo -= 1
+    fim
+fim
+
+quando heroi tocar moedaA
+    executar acao 'pegouA'
+fim
+
+quando heroi tocar moedaB
+    executar acao 'pegouB'
+fim
+
+quando heroi tocar moedaC
+    executar acao 'pegouC'
+fim
+
+quando heroi tocar perigo
+    heroi.vidas -= 1
+    heroi.pontos -= 1
+    print(heroi.vidas)
+    mover perigo para (0, 6, 0) velocidade 40
+    esperar 1
+    mover perigo para (0, 3, 0) velocidade 20
+fim
+
+quando iniciar
+    se "heroi" criado com sucesso entao
+        print("YASHDASH pronto - pegue as 3 moedas e desvie do perigo vermelho")
+    fim
+fim
+
+se heroi.pontos >= 3
+    executar acao 'vitoria'
+fim
+
+se heroi.tempo <= 0
+    executar acao 'derrota'
+fim
+
+se heroi.vidas <= 0
+    executar acao 'derrota'
+fim

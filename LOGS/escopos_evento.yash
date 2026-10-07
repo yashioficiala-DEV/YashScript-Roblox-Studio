@@ -1,0 +1,18 @@
+usar "Botao" = workspace.Botao
+usar "Outro" = workspace.Outro
+
+quando clicar Botao
+    variavel Temporario = 0
+    Temporario += 1
+    print(Temporario)
+    retornar
+    print("ERRO: callback não retornou")
+fim
+
+quando clicar Outro
+    variavel Temporario = 0
+    Temporario += 1
+    print(Temporario)
+    retornar
+    print("ERRO: callback não retornou")
+fim

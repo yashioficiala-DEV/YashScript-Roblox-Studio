@@ -1,0 +1,269 @@
+================================================================================
+YASHSCRIPT V8.0 — REFERÊNCIA DE IMPLEMENTAÇÃO
+================================================================================
+Atualizado em: 2026-10-05
+Fontes principais: compilador/compilador.lua, compilador/gerador.lua,
+plugin/_modelo_plugin.lua e plugin/plugin.lua.
+
+1. PIPELINE E ARQUITETURA
+
+YashScript compila a fonte para uma estrutura interna e então gera Luau nativo:
+
+  fonte YashScript -> Compilador.Compilar -> programa -> Gerador.GerarLuau
+                   -> Luau puro -> Script.Source
+
+O plugin embute Compilador e Gerador. O script gerado executa diretamente no
+Roblox; não requer _YashConfig, Runtime, marcadores YASHC ou um ModuleScript
+Runtime. Os arquivos compilador/runtime.lua e compilador/iniciar.lua, que
+implementavam a execução interpretada das versões anteriores, foram removidos do
+projeto em V8 e não são carregados pelo plugin.
+
+O plugin infere o contexto pela classe do alvo:
+- Script: servidor.
+- LocalScript: cliente.
+- ModuleScript: código comum e retorno de aliases em tabela.
+
+2. SINTAXE BASE
+
+- UTF-8; instruções por linha; comentários iniciam com #.
+- Blocos são fechados por fim.
+- Valores suportados incluem números, texto entre aspas, booleanos
+  (verdadeiro/sim, falso/não), nulo, cores RGB, tuplas 2D/3D, aliases e caminhos
+  de propriedades/instâncias.
+- Construtores e namespaces globais comuns do Roblox/Luau podem aparecer em
+  expressões sem alias, como `Instance.new`, `Vector3.new`, `CFrame.new`,
+  `Color3.fromRGB`, `UDim2.fromOffset`, `Enum.Material` e `task.wait`. Funções
+  globais incluem `typeof`, `warn`, `pcall`, `require` e operações de tabelas.
+- Números aceitam notação científica, com ou sem sinal no expoente:
+  `1e-7`, `2.5E+3`, `0.0000001`, `-3e-2`. Isso é distinguir `1e-7` do
+  operador `e` ("e"): `1e-7` é o número 0.0000001, e `1 e -7` continua
+  sendo a expressão lógica. Valores muito pequenos ou grandes não são mais
+  arredondados na geração.
+- Texto entre aspas duplas ou simples entende escapes: `\"` aspa, `\\`
+  barra, `\n` quebra de linha, `\r` retorno de carro, `\t` tabulação e
+  `\ddd` em decimal (3 dígitos, ex.: `\009`). Texto com acentos funciona
+  direto em UTF-8: `variavel A = "ação coração"`.
+- usar "Alias" = caminho declara referências ao DataModel ou serviços Roblox.
+  Propriedades conhecidas em português são mapeadas para propriedades Roblox,
+  incluindo vida/vida_maxima, velocidade, posição, tamanho, cor, visível,
+  habilitado, ancorado e colisão.
+- `variavel`, `var` e `let` declaram estado do script. Atribuições aceitam
+  expressões com `+`, `-`, `*`, `/`, `//`, `%`, `^`, `..`, comparações e lógica.
+- `workspace.CurrentCamera` funciona como alias no cliente; `CameraType` aceita
+  `Scriptable`, `Custom`, `Attach`, `Track` e `Watch`. Atribuir
+  `Camera.CFrame = CameraPart.CFrame` fixa a câmera na pose de uma peça.
+
+3. CONDIÇÕES E FLUXO
+
+Condições de se e enquanto aceitam comparações dinâmicas, igualdade e
+comparadores, booleanos diretos, parênteses, não/nao, e/and, ou/or. A condição
+pode comparar variáveis, propriedades, textos, booleanos e caminhos. `senao se`
+adiciona qualquer número de condições alternativas antes do `senao` final. Isso
+funciona dentro de comandos e no nível superior; o gerador emite `elseif` Luau.
+
+Condições especializadas traduzidas incluem visível/oculto, tecla pressionada,
+distância (perto/longe e menor/maior que), vivo/morto, tocar e instância criada.
+Enquanto pode executar no topo e dentro de blocos. Esperar/aguardar N gera
+task.wait(N), inclusive em código sequencial e handlers.
+
+4. EVENTOS, AÇÕES E ANIMAÇÕES
+
+Eventos comuns incluem iniciar, carregar, clicar, mouse_em, mouse_sair,
+tocar e encostar. Eventos Touched aceitam sujeito lógico (jogador ou player) ou
+objeto; handlers são conectados diretamente aos eventos Roblox.
+
+`jogador` não é uma referência implícita ao Player. Ele só tem efeito como
+sujeito lógico de `quando jogador tocar <objeto>`, e nesse caso o corpo do
+handler recebe `_YashPersonagem`, que é o Model do personagem que encostou, e
+não o Player. Para usar o nome `jogador` em qualquer outra posição (condição,
+comando, HUD, tabela), declare-o antes com `usar "jogador" = ...` ou
+`criar objeto 'jogador'`; sem isso a geração falha com "não é um alias declarado".
+
+Chamadas de método aceitam argumentos posicionais simples e são emitidas como
+chamadas de método Luau. Funcionam como instrução avulsa em qualquer posição:
+nível superior, dentro de evento, função, laço ou bloco condicional.
+
+  usar "Parte" = Workspace.Parte
+  Parte:PivotTo((0, 5, 0))          -> Parte:PivotTo(Vector3.new(0, 5, 0))
+  Workspace.Casa:PivotTo((0,5,0))   -> base por caminho, sem alias
+  Casa.Porta:Destroy()              -> base de caminho + método Luau
+
+Também são aceitos no corpo de função, laço e evento. Argumentos aceitos:
+literais, aliases/caminhos, booleanos, nulo, cores, tuplas e chamadas aninhadas
+(Instance.new, CFrame.new). `destruir()` e `remover()` com ponto são escritos
+em português e viram `Destroy()`:
+
+  Moeda.destruir()   -> Moeda:Destroy()
+  Moeda.remover()    -> Moeda:Destroy()
+
+Valores de retorno de método (como T:find("b"), que devolve dois resultados)
+ainda não são suportados.
+
+`print(expressao, ...)` aceita múltiplos argumentos e expressões completas,
+incluindo chamadas de função aninhadas; os argumentos são avaliados e enviados
+ao `print` Luau na ordem escrita.
+
+criar acao "Nome" ... fim define função Luau local e executar/chamar/animar
+acao Nome invoca essa função. Ações podem acessar o alvo do evento. Animações
+criadas e efeitos visuais usam TweenService. Efeitos de visibilidade, cenas e
+propriedades/tweens são emitidos em Luau nativo.
+
+5. INSTÂNCIAS, UI E CENAS
+
+A geração materializa as construções declarativas suportadas em Instances:
+- criar painel/texto/botao/campo/imagem/elemento;
+- criar bloco/esfera/cilindro/cunha/paralelepipedo/plataforma;
+- site ... fim e mundo ... fim;
+- criar estilo, HUD, cena e objeto.
+
+As instâncias estáticas são criadas no início do script. Elementos UI exigem
+contexto de cliente, exceto HUDs simples, que podem ser servidos por Script e
+clonados para PlayerGui. site com elementos exige LocalScript. mundo configura
+Lighting. Cenas marcam instâncias e mudar/mostrar/esconder cena ajusta a
+visibilidade dos elementos marcados.
+
+Para objetos previamente configurados, use também:
+  clonar Origem para Parent como Nome
+A cópia é clonada em execução, recebe o nome informado e é parentada no destino.
+
+Cores
+------
+A forma confiável de atribuir uma cor é `rgb(r, g, b)`, com componentes de 0 a
+255. Os nomes `preto`, `branco`, `black` e `white` também são aceitos, mas
+somente nas propriedades `cor`, `cor_texto`, `cor_borda` e `fundo`. Qualquer outro
+nome de cor passa pelo compilador e não é traduzido: em `fundo` do `site` e em
+`cor` de elementos de interface ele vira uma string no Luau gerado, que é
+inválida em uma Color3, e em formas 3D é descartado sem aviso. Use `rgb()`.
+
+Tamanho e cantos
+----------------
+Em `criar painel`, `criar texto`, `criar botao`, `criar campo`, `criar imagem` e
+`criar elemento`, `largura` e `altura` definem o tamanho em pixels e
+`arredondamento` cria um UICorner com o raio informado. Essas três propriedades
+têm efeito apenas em elementos criados: dentro de `site ... fim` elas são
+descartadas sem aviso.
+
+6. GAMEPLAY E SERVIÇOS
+
+- causar dano Alvo N: Humanoid:TakeDamage; tabelas de dados usam campo vida.
+- curar Alvo N: soma limitada a MaxHealth; tabela de dados respeita vida_maxima.
+- matar Alvo: zera Health ou vida.
+- respawnar Alvo: resolve Player por Character ou nome e chama LoadCharacter.
+- teleportar Alvo (x, y, z): PivotTo.
+- mover/rotacionar: tween ou interpolação do pivot para BasePart/Model.
+- seguir Quem o Alvo: MoveTo para personagem com Humanoid ou acompanha por pivot.
+- tocar som ID: cria Sound em SoundService e remove via Debris após 5 s.
+- explodir Alvo raio R dano D: cria Explosion no pivot do alvo.
+- destruir objeto/elemento Alvo e métodos destruir/remover chamam Destroy.
+- sortear Nome entre A e B, somar/subtrair e atribuições geram operações Luau.
+
+O nome canônico do serviço Roblox é Debris (Debris:AddItem), mesmo que o
+código-fonte use aliases históricos de escrita.
+
+7. INCLUSÕES E LIMITES DE HOST
+
+incluir "arquivo.yash" é expandido por Compilador.Compilar quando o host passa
+o conteúdo em sua tabela de arquivos. O plugin do Studio fornece tabela vazia,
+pois não pode ler arquivos arbitrários do computador; por isso uma inclusão
+sem conteúdo gera erro explícito. Forneça os arquivos ao compilador ou combine
+as fontes antes de compilar.
+
+A sintaxe é validada antes de gravar. Referências não resolvidas, alvos
+incompatíveis com o contexto e construções sem tradução têm erro explícito.
+O código embutido no plugin foi validado quanto à sintaxe Lua; não foi executado
+em uma sessão Roblox Studio nesta implementação.
+
+8. MIGRAÇÃO E ARQUIVOS
+
+V8 é breaking change no pipeline do plugin: apenas Compilador + Gerador são
+instalados como módulos. Runtime e Iniciar foram removidos do projeto; não os
+instale nem os restaure. Scripts antigos e utilitários históricos ainda podem
+citar a arquitetura V6/V7, mas estão fora do caminho ativo do plugin V8. A
+lista do que foi removido da linguagem está na seção 13.
+
+9. FUNÇÕES COM PARÂMETROS E RETORNO
+
+Defina funções reutilizáveis com criar funcao Nome(parametros). Os parâmetros são nomes separados por vírgula; use retornar expressão para devolver um resultado. Funções podem ser chamadas como Nome(argumentos) em expressões e comandos.
+
+Exemplo:
+criar funcao Somar(a, b)
+    retornar a + b
+fim
+variavel Total = Somar(2, 3)
+
+A chamada avalia os argumentos na ordem declarada. `variavel` declarada em funções, ações ou callbacks de eventos (clicar, mouse e toque) é local àquela execução; chamadas diferentes podem reutilizar o mesmo nome sem compartilhar estado. Variáveis declaradas no nível superior continuam compartilhadas pelo script e podem ser lidas por essas funções. O gerador declara funções Luau locais antes dos comandos que as usam. Veja LOGS/funcoes.yash e LOGS/escopos_funcao.yash.
+
+Callbacks Roblox e ações nomeadas recebem as mesmas regras de estado local por execução. Veja LOGS/escopos_evento.yash para dois callbacks que declaram o mesmo nome sem colisão.
+
+10. TABELAS, LISTAS E ÍNDICES
+
+Tabelas podem misturar itens de lista e campos nomeados. Use chaves para construir os valores; índices de lista começam em 1. Leia e escreva posições com colchetes, inclusive com atribuições compostas. Campos nomeados também aceitam ponto.
+
+Exemplo:
+variavel Inventario = {"espada", "escudo"}
+variavel Dados = {pontos = 10, ganho = 2}
+Inventario[2] = "lanca"
+Dados["pontos"] += Dados.ganho
+
+Veja LOGS/colecoes.yash para um exemplo que também é executado nos testes.
+
+11. LAÇOS
+
+`para indice de inicio ate limite passo incremento` produz um laço numérico inclusivo; passo é opcional e vale 1 por padrão. `para cada item em lista` percorre uma lista em ordem com ipairs. `para cada chave, valor em mapa` percorre pares com pairs. As variáveis declaradas no cabeçalho pertencem ao escopo do laço gerado.
+
+`repita ... ate condicao` executa o corpo pelo menos uma vez e testa a condição no fim de cada repetição. `pare` e `continuar` também funcionam dentro dele.
+
+`pare` encerra o laço mais interno. `continuar` pula para a próxima repetição. Ambos só são válidos dentro de um laço e podem aparecer em blocos condicionais dentro dele. O gerador emite `break` e `continue` Luau; `continuar` também é validado pelo analisador Luau real.
+
+Exemplo:
+para cada valor em Valores
+    Soma += valor
+fim
+
+para indice de 1 ate 5 passo 2
+    Soma += indice
+fim
+
+Veja LOGS/repeticoes.yash para lista, mapa, intervalo e repita/ate executáveis.
+Veja LOGS/continue.yash para um exemplo de `continuar`.
+
+repita
+    Tentativas += 1
+ate Tentativas >= 3
+
+12. LIMITAÇÕES CONHECIDAS
+
+Verificadas contra o gerador V8 atual:
+- Cores: apenas `rgb(r, g, b)` é seguro. `preto`/`branco` (e `black`/`white`)
+  valem somente para `cor`, `cor_texto`, `cor_borda` e `fundo`. Outros nomes de
+  cor não são traduzidos: viram string inválida ou são descartados em silêncio.
+- `Players.LocalPlayer` é resolvido como se fosse uma Instance filha e gera
+  `Players:WaitForChild("LocalPlayer")`, o que está errado: `LocalPlayer` é uma
+  propriedade do serviço Players, não um filho. Não existe alias pronto para o
+  jogador local, e o nome solto `LocalPlayer` também não é resolvido.
+- `jogador` só é sujeito lógico em `quando jogador tocar`. Em qualquer outra
+  posição é um nome comum e precisa ser declarado com `usar` ou `criar objeto`.
+- Valores de retorno de método (por exemplo `T:find("b")`, que devolve dois
+  resultados) não são suportados.
+- `incluir "arquivo.yash"` só funciona quando o host entrega o conteúdo do
+  arquivo ao compilador; o plugin do Studio não lê arquivos do disco.
+- Propriedades HTML/CSS sem equivalente no Roblox foram removidas em vez de
+  serem aceitadas e descartadas; ver a seção 13.
+
+13. REMOVIDO DA LINGUAGEM EM V8.0
+
+Estas construções eram aceitas, mas não produziam nada no Luau gerado: o
+contexto vem da classe do Script no Studio, não do texto. Foram retiradas do
+compilador e agora dão erro explícito em vez de sumirem em silêncio.
+- `principal` — não marcava nada.
+- `servidor` no início do arquivo — o contexto já vem da classe do script.
+- `YASHSCRIPT: servidor` e `YASHSCRIPT: cliente` — o sufixo era gravado e nunca
+  lido. O cabeçalho ficou sendo apenas `YASHSCRIPT:`.
+- `transicao` — CSS sem equivalente no Roblox.
+- `controlavel` — sem equivalente no Roblox.
+- `sombra` — CSS sem equivalente no Roblox.
+
+Continua valendo: `site`, `largura`, `altura`, `arredondamento`,
+`criar estilo`, `borda` e as demais propriedades HTML/CSS que o gerador
+traduz para Roblox.
+================================================================================

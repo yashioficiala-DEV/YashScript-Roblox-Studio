@@ -1,0 +1,48 @@
+YASHSCRIPT:
+
+criar objeto 'placar'
+    moedas = 0
+    tempo = 30
+    vidas = 3
+    terminou = 0
+fim
+
+criar painel 'placarTexto'
+    largura = 320
+    altura = 74
+    posicao = (20, 20)
+    cor = rgb(12, 14, 22)
+    transparencia = 25
+    estilo = "caixa"
+fim
+
+criar texto 'titulo'
+    pai = "placarTexto"
+    texto = "YASHDASH"
+    posicao = (14, 8)
+    tamanho_fonte = 24
+    cor = rgb(255, 214, 0)
+    estilo = "branco"
+fim
+
+criar texto 'instrucoes'
+    pai = "placarTexto"
+    texto = "Pegue as 3 moedas amarelas. Desvie da esfera vermelha. 30 segundos!"
+    posicao = (14, 38)
+    tamanho_fonte = 14
+    cor = rgb(226, 232, 240)
+    estilo = "branco"
+fim
+
+a cada 1
+    se placar.terminou = 0 entao
+        placar.tempo -= 1
+        placar.moedas += 1
+    fim
+fim
+
+quando iniciar
+    se "placar" criado com sucesso entao
+        print("YASHDASH: interface carregada")
+    fim
+fim

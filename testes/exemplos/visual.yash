@@ -1,0 +1,26 @@
+# arquivo de configuração visual
+site
+    fundo = rgb(0,0,0)
+    fonte = Arial
+fim
+
+criar cena 'Principal'
+    mostrar = "verdadeiro"
+fim
+
+criar cena 'TelaSobre'
+    mostrar = "falso"
+fim
+
+criar estilo 'botao-padrao'
+    cor            = rgb(20,20,20)
+    cor_texto      = white
+    borda          = 2
+    cor_borda      = rgb(80,80,80)
+    arredondamento = 20
+fim
+
+criar estilo 'textos'
+    cor_texto      = white
+    tamanho_fonte  = 20
+fim

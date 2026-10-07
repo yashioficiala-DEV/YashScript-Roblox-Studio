@@ -1,0 +1,15 @@
+YASHSCRIPT:
+criar funcao CalcularDano(base, multiplicador)
+    retornar base * multiplicador
+fim
+criar funcao PossuiLetra(texto, letra)
+    retornar texto:find(letra) ~= nulo
+fim
+
+variavel DanoBase = 12
+variavel Multiplicador = 1.5
+variavel DanoFinal = CalcularDano(DanoBase, Multiplicador)
+
+quando iniciar
+    print("Dano final:", CalcularDano(DanoBase, Multiplicador))
+fim

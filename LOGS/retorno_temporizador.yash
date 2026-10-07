@@ -1,0 +1,6 @@
+a cada 0.25
+    variavel Tick = 0
+    Tick += 1
+    print(Tick)
+    retornar
+fim

@@ -1,0 +1,70 @@
+mundo
+    ceu = rgb(135,206,235)
+    neblina = rgb(200,210,220)
+    neblina_inicio = 30
+    neblina_fim = 150
+fim
+
+criar plataforma 'chao'
+    posicao = (0, -1, 0)
+    tamanho = (60, 2, 60)
+    cor = rgb(80,120,90)
+    material = grama
+fim
+
+criar bloco 'parede'
+    posicao = (-12, 2, 0)
+    tamanho = (2, 5, 24)
+    cor = rgb(150,150,155)
+    material = concreto
+fim
+
+criar esfera 'bola'
+    posicao = (0, 2, 4)
+    tamanho = (2, 2, 2)
+    cor = rgb(255,80,80)
+    velocidade = 18
+    vida = 100
+fim
+
+criar esfera 'moeda'
+    posicao = (8, 2, 0)
+    tamanho = (1.5, 1.5, 1.5)
+    cor = rgb(255,210,0)
+fim
+
+criar objeto 'jogador'
+    vida = 100
+    moedas = 0
+fim
+
+criar hud 'moedas'
+    mostrar jogador.moedas
+fim
+
+criar hud 'vida'
+    mostrar jogador.vida
+fim
+
+a cada 5
+    sortear bonus entre 1 e 9
+fim
+
+quando tocar 'moeda'
+    sortear ganho entre 1 e 5
+    somar ganho a jogador.moedas
+    esperar 1
+    mover moeda para (-8, 2, -6) velocidade 40
+fim
+
+quando tocar 'parede'
+    causar dano jogador 5
+fim
+
+quando iniciar
+    mostrar texto "mundo preparado"
+fim
+
+se distancia bola de moeda menor que 4
+    mostrar texto "bola perto da moeda"
+fim

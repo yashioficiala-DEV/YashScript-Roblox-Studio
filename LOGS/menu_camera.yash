@@ -1,0 +1,31 @@
+YASHSCRIPT:
+usar "Jogar" = StarterGui.Menu.Jogar
+usar "Menu" = StarterGui.Menu
+usar "Fundo" = StarterGui.Menu.Fundo
+usar "Camera" = workspace.CurrentCamera
+usar "CameraPart" = workspace.CameraPart
+
+criar animacao 'pulsar'
+    animacao = fade out + duracao = 0.5
+fim
+
+quando iniciar
+    Camera.CameraType = Scriptable
+    Camera.CFrame = CameraPart.CFrame
+fim
+
+quando mouse_em "Jogar"
+    animar("Jogar") crescer + escala = 1.4 + duracao = 0.2
+fim
+
+quando mouse_sair "Jogar"
+    animar("Jogar") diminuir + escala = 0.7142857 + duracao = 0.2
+fim
+
+quando clicar "Jogar"
+    executar animacao 'pulsar'
+    animar("Fundo") fade out + duracao = 0.5
+    esperar 0.5
+    esconder Menu
+    Camera.CameraType = Custom
+fim

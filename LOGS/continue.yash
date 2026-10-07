@@ -1,0 +1,12 @@
+YASHSCRIPT:
+variavel Valores = {1, 2, 3}
+variavel Soma = 0
+
+para cada valor em Valores
+    se valor == 2
+        continuar
+    fim
+    Soma += valor
+fim
+
+print(Soma)

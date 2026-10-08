@@ -1,7 +1,7 @@
 --[[
-  YashScript V8.0 — Núcleo do compilador: lexer + parser (Luau puro, sem Roblox)
+  YashScript V8.1 — Núcleo do compilador: lexer + parser (Luau puro, sem Roblox)
 
-  ARQUITETURA ATUAL (V8.0)
+  ARQUITETURA ATUAL (V8.1)
     YashScript  ->  Compilar  ->  programa  ->  gerador.GerarLuau  ->  Luau puro
 
   Este arquivo cuida da PRIMEIRA etapa: tokenizar e produzir o programa
@@ -21,7 +21,7 @@
     -- ok = false -> resultado = { erro = "mensagem", linha = n }
 ]]
 
-local Compilador = { VERSAO = "8.0" }
+local Compilador = { VERSAO = "8.1" }
 
 local EMPILHAR = table.insert
 

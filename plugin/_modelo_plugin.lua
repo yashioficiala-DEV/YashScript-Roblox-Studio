@@ -1,5 +1,5 @@
 --[[
-  YashScript V8.0 — Plugin do Roblox Studio (editor avançado + compilador Luau direto)
+  YashScript V8.1 — Plugin do Roblox Studio (editor avançado + compilador Luau direto)
 
   NOVAS FUNCIONALIDADES DO EDITOR:
   - Auto-par de brackets: () [] {} "" ''
@@ -16,7 +16,7 @@
     3) Edite no painel avançado e clique "Gravar".
     4) O plugin faz Compilar -> GerarLuau e escreve o LUAU PURO no Source.
 
-  O Source gerado (V8.0):
+  O Source gerado (V8.1):
     - `_YashConfig` e o literal de config
     - `Runtime.executar` / `Runtime.montarMundo`
     - os marcadores `--YASHC1--` / `--YASHC2--`
@@ -45,7 +45,7 @@ local FONTES = {
 }
 
 -- ------------------------------------------------------------------
--- DICIONÁRIO COMPLETO DA LINGUAGEM YASHSCRIPT V8.0
+-- DICIONÁRIO COMPLETO DA LINGUAGEM YASHSCRIPT V8.1
 -- ------------------------------------------------------------------
 
 local YASH_DICTIONARY = {
@@ -1155,11 +1155,11 @@ end
 
 local toolbar = plugin:CreateToolbar("YashScript")
 print("[YashScript] toolbar criada")
-local botaoAbrir = toolbar:CreateButton("YashScript V8.0", "Abrir o editor YashScript avançado", "rbxassetid://16955637958")
+local botaoAbrir = toolbar:CreateButton("YashScript V8.1", "Abrir o editor YashScript avançado", "rbxassetid://16955637958")
 
 local info = DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Float, false, false, 500, 700, 400, 500)
 local widget = plugin:CreateDockWidgetPluginGui("YashScriptPainel", info)
-widget.Title = "YashScript V8.0 — Editor Avançado"
+widget.Title = "YashScript V8.1 — Editor Avançado"
 
 botaoAbrir.Click:Connect(function()
 	widget.Enabled = not widget.Enabled
@@ -1219,7 +1219,7 @@ titulo.Size = UDim2.new(1, -212, 0, 24)
 titulo.Position = UDim2.new(0, 206, 0, 4)
 titulo.BackgroundColor3 = Color3.fromRGB(38, 38, 50)
 titulo.TextColor3 = COR_TEXTO
-titulo.Text = "YashScript V8.0 — Editor Avançado"
+titulo.Text = "YashScript V8.1 — Editor Avançado"
 titulo.TextSize = 14
 titulo.Font = Enum.Font.SourceSansSemibold
 titulo.Parent = root
@@ -1611,4 +1611,4 @@ aplicarLayout = function() end -- layout fixo agora
 widget.Enabled = true
 pcall(_repovoarLista)
 setarStatus("Pronto. Editor avançado carregado.", COR_OK)
-print("[YashScript] Plugin V8.0 Advanced carregado")
+print("[YashScript] Plugin V8.1 Advanced carregado")

@@ -1,5 +1,5 @@
 --[[
-  YashScript V8.0 — Gerador de Luau
+  YashScript V8.1 — Gerador de Luau
 
   Recebe o PROGRAMA (a estrutura devolvida por compilador.Compilar) e devolve
   Luau puro, pronto para o Source de um Script / LocalScript / ModuleScript.
@@ -25,7 +25,7 @@
     -- ok = false -> luau = { erro = "mensagem", linha = n }
 ]]
 
-local Gerador = { VERSAO = "8.0" }
+local Gerador = { VERSAO = "8.1" }
 
 local JUNTAR = table.concat
 
@@ -363,29 +363,29 @@ local function GerarLuau(programa, opcoes)
 	local aliases = {}         -- nome YashScript -> nome Luau
 	local objetosDados = {}     -- objetos lógicos declarados com `criar objeto`
 	local LOCAIS_GERADOS = {   -- locais criadas pelo proprio gerador
-		_YashAlvo = true,
-		_YashRaiz = true,
-		_YashPersonagem = true,
-		_YashUltimoToque = true,
-		_YashAgora = true,
-		_YashDoSujeito = true,
-		_YashVis = true,
-		_YashTween = true,
-		_YashG = true,
-		_YashP = true,
-		_YashTamanho = true,
-		_YashMetade = true,
-		_YashHumanoide = true,
-		_YashAlvoVida = true,
-		_YashPlayer = true,
-		_YashPersonagemAlvo = true,
-		_YashPivotInicial = true,
-		_YashExplosao = true,
-		_YashSom = true,
-		_YashAcao = true,
-		_YashAcaoAlvo = true,
-		_YashTela = true,
-		_YashRootFrame = true,
+		_alvo = true,
+		_raiz = true,
+		_personagem = true,
+		_ultimoToque = true,
+		_agora = true,
+		_doSujeito = true,
+		_vis = true,
+		_tween = true,
+		_metas = true,
+		_pos = true,
+		_tamanho = true,
+		_metade = true,
+		_humanoide = true,
+		_alvoVida = true,
+		_player = true,
+		_personagemAlvo = true,
+		_pivotInicial = true,
+		_explosao = true,
+		_som = true,
+		_acao = true,
+		_acaoAlvo = true,
+		_tela = true,
+		_frameRaiz = true,
 	}
 	local usadoRaiz = false    -- precisa da local do ScreenGui
 
@@ -472,7 +472,7 @@ local function GerarLuau(programa, opcoes)
 				if ancestraGui and ancestraGui[1] and #partes >= 2
 					and partes[2] == ancestraGui[1] then
 					usadoRaiz = true
-					return navegar("_YashRaiz", partes, 3)
+					return navegar("_raiz", partes, 3)
 				end
 				-- senao: PlayerGui
 				servico("Players")
@@ -484,12 +484,12 @@ local function GerarLuau(programa, opcoes)
 		end
 
 		-- 4) nome da propria arvore do GUI (cliente dentro de um ScreenGui):
-		--    `Jogar` vira _YashRaiz:WaitForChild(...) sem precisar de `usar`.
+		--    `Jogar` vira _raiz:WaitForChild(...) sem precisar de `usar`.
 		--    Se o nome for um dos ancestrais do script, parte dele; senao,
 		--    procura como filho de script.Parent (o ultimo nome do ancestral).
 		if ancestraGui and #ancestraGui > 0 and not semArvoreGui then
 			usadoRaiz = true
-			local codigo = "_YashRaiz"
+			local codigo = "_raiz"
 			local corte = nil
 			for i = 1, #ancestraGui do
 				if ancestraGui[i] == primeiro then
@@ -799,79 +799,75 @@ local function GerarLuau(programa, opcoes)
 		return gs
 	end
 
-	-- emite Create + Play de um tween puro; exige `local _YashAlvo` ja emitido
+	-- emite Create + Play de um tween puro; exige `local _alvo` ja emitido
 	local function emitirGoalsPlay(info, gs)
-		emitir("local _YashTween = " .. servico("TweenService") .. ":Create(_YashAlvo, "
-			.. info .. ", {")
+		emitir(servico("TweenService") .. ":Create(_alvo, " .. info .. ", {")
 		for _, g in ipairs(gs) do
 			emitir("\t" .. g.prop .. " = " .. g.val .. ",")
 		end
-		emitir("})")
-		emitir("_YashTween:Play()")
+		emitir("}):Play()")
 		return ""
 	end
 
 	-- efeito fade in: aparece suavemente a partir de transparente.
 	-- LayerCollector (ScreenGui) nao tem transparencia: vira so Enabled = true.
 	local function efeitoFadeIn(info)
-		emitir("local _YashG = {}")
-		emitir("if _YashAlvo:IsA(\"LayerCollector\") then")
-		emitir("\t_YashAlvo.Enabled = true")
-		emitir("elseif _YashAlvo:IsA(\"CanvasGroup\") then")
-		emitir("\t_YashAlvo.Visible = true")
-		emitir("\t_YashAlvo.GroupTransparency = 1")
-		emitir("\t_YashG.GroupTransparency = 0")
-		emitir("elseif _YashAlvo:IsA(\"ImageLabel\") or _YashAlvo:IsA(\"ImageButton\") then")
-		emitir("\t_YashAlvo.Visible = true")
-		emitir("\t_YashAlvo.BackgroundTransparency = 1")
-		emitir("\t_YashAlvo.ImageTransparency = 1")
-		emitir("\t_YashG.BackgroundTransparency = 0")
-		emitir("\t_YashG.ImageTransparency = 0")
-		emitir("elseif _YashAlvo:IsA(\"TextLabel\") or _YashAlvo:IsA(\"TextButton\") or _YashAlvo:IsA(\"TextBox\") then")
-		emitir("\t_YashAlvo.Visible = true")
-		emitir("\t_YashAlvo.BackgroundTransparency = 1")
-		emitir("\t_YashAlvo.TextTransparency = 1")
-		emitir("\t_YashG.BackgroundTransparency = 0")
-		emitir("\t_YashG.TextTransparency = 0")
+		emitir("local _metas = {}")
+		emitir("if _alvo:IsA(\"LayerCollector\") then")
+		emitir("\t_alvo.Enabled = true")
+		emitir("elseif _alvo:IsA(\"CanvasGroup\") then")
+		emitir("\t_alvo.Visible = true")
+		emitir("\t_alvo.GroupTransparency = 1")
+		emitir("\t_metas.GroupTransparency = 0")
+		emitir("elseif _alvo:IsA(\"ImageLabel\") or _alvo:IsA(\"ImageButton\") then")
+		emitir("\t_alvo.Visible = true")
+		emitir("\t_alvo.BackgroundTransparency = 1")
+		emitir("\t_alvo.ImageTransparency = 1")
+		emitir("\t_metas.BackgroundTransparency = 0")
+		emitir("\t_metas.ImageTransparency = 0")
+		emitir("elseif _alvo:IsA(\"TextLabel\") or _alvo:IsA(\"TextButton\") or _alvo:IsA(\"TextBox\") then")
+		emitir("\t_alvo.Visible = true")
+		emitir("\t_alvo.BackgroundTransparency = 1")
+		emitir("\t_alvo.TextTransparency = 1")
+		emitir("\t_metas.BackgroundTransparency = 0")
+		emitir("\t_metas.TextTransparency = 0")
 		emitir("else")
-		emitir("\t_YashAlvo.Visible = true")
-		emitir("\t_YashAlvo.BackgroundTransparency = 1")
-		emitir("\t_YashG.BackgroundTransparency = 0")
+		emitir("\t_alvo.Visible = true")
+		emitir("\t_alvo.BackgroundTransparency = 1")
+		emitir("\t_metas.BackgroundTransparency = 0")
 		emitir("end")
-		emitir("if next(_YashG) ~= nil then")
-		emitir("\tlocal _YashTween = " .. servico("TweenService") .. ":Create(_YashAlvo, "
-			.. info .. ", _YashG)")
-		emitir("\t_YashTween:Play()")
+		emitir("if next(_metas) ~= nil then")
+		emitir("\t" .. servico("TweenService") .. ":Create(_alvo, "
+			.. info .. ", _metas):Play()")
 		emitir("end")
 		return ""
 	end
 
 	-- efeito fade out: some suavemente e desliga a visibilidade no fim
 	local function efeitoFadeOut(info, dur)
-		emitir("local _YashG = {}")
-		emitir("if _YashAlvo:IsA(\"LayerCollector\") then")
+		emitir("local _metas = {}")
+		emitir("if _alvo:IsA(\"LayerCollector\") then")
 		emitir("\t-- LayerCollector nao tem transparencia: some so no fim")
-		emitir("elseif _YashAlvo:IsA(\"CanvasGroup\") then")
-		emitir("\t_YashG.GroupTransparency = 1")
-		emitir("elseif _YashAlvo:IsA(\"ImageLabel\") or _YashAlvo:IsA(\"ImageButton\") then")
-		emitir("\t_YashG.BackgroundTransparency = 1")
-		emitir("\t_YashG.ImageTransparency = 1")
-		emitir("elseif _YashAlvo:IsA(\"TextLabel\") or _YashAlvo:IsA(\"TextButton\") or _YashAlvo:IsA(\"TextBox\") then")
-		emitir("\t_YashG.BackgroundTransparency = 1")
-		emitir("\t_YashG.TextTransparency = 1")
+		emitir("elseif _alvo:IsA(\"CanvasGroup\") then")
+		emitir("\t_metas.GroupTransparency = 1")
+		emitir("elseif _alvo:IsA(\"ImageLabel\") or _alvo:IsA(\"ImageButton\") then")
+		emitir("\t_metas.BackgroundTransparency = 1")
+		emitir("\t_metas.ImageTransparency = 1")
+		emitir("elseif _alvo:IsA(\"TextLabel\") or _alvo:IsA(\"TextButton\") or _alvo:IsA(\"TextBox\") then")
+		emitir("\t_metas.BackgroundTransparency = 1")
+		emitir("\t_metas.TextTransparency = 1")
 		emitir("else")
-		emitir("\t_YashG.BackgroundTransparency = 1")
+		emitir("\t_metas.BackgroundTransparency = 1")
 		emitir("end")
-		emitir("if next(_YashG) ~= nil then")
-		emitir("\tlocal _YashTween = " .. servico("TweenService") .. ":Create(_YashAlvo, "
-			.. info .. ", _YashG)")
-		emitir("\t_YashTween:Play()")
+		emitir("if next(_metas) ~= nil then")
+		emitir("\t" .. servico("TweenService") .. ":Create(_alvo, "
+			.. info .. ", _metas):Play()")
 		emitir("end")
 		emitir("task.delay(" .. numeroLua(dur + 0.05) .. ", function()")
-		emitir("\tif _YashAlvo:IsA(\"LayerCollector\") then")
-		emitir("\t\t_YashAlvo.Enabled = false")
+		emitir("\tif _alvo:IsA(\"LayerCollector\") then")
+		emitir("\t\t_alvo.Enabled = false")
 		emitir("\telse")
-		emitir("\t\t_YashAlvo.Visible = false")
+		emitir("\t\t_alvo.Visible = false")
 		emitir("\tend")
 		emitir("end)")
 		return ""
@@ -888,19 +884,18 @@ local function GerarLuau(programa, opcoes)
 	local function efeitoSlide(info, spec, eixo, sinal)
 		local delta = spec.eparams.delta or 100
 		local op = (sinal < 0) and " - " or " + "
-		local x = "_YashP.X.Scale, _YashP.X.Offset"
-		local y = "_YashP.Y.Scale, _YashP.Y.Offset"
+		local x = "_pos.X.Scale, _pos.X.Offset"
+		local y = "_pos.Y.Scale, _pos.Y.Offset"
 		if eixo == "X" then
 			x = x .. op .. numeroLua(delta)
 		else
 			y = y .. op .. numeroLua(delta)
 		end
-		emitir("local _YashP = _YashAlvo.Position")
-		emitir("local _YashTween = " .. servico("TweenService") .. ":Create(_YashAlvo, "
+		emitir("local _pos = _alvo.Position")
+		emitir(servico("TweenService") .. ":Create(_alvo, "
 			.. info .. ", {")
 		emitir("\tPosition = UDim2.new(" .. x .. ", " .. y .. "),")
-		emitir("})")
-		emitir("_YashTween:Play()")
+		emitir("}):Play()")
 		return ""
 	end
 
@@ -910,19 +905,17 @@ local function GerarLuau(programa, opcoes)
 		local infoMeia, e = infoDeSpec(spec, onde, dur / 2)
 		if not infoMeia then return nil, e end
 		local m = numeroLua(escala)
-		emitir("local _YashTamanho = _YashAlvo.Size")
-		emitir("local _YashTween = " .. servico("TweenService") .. ":Create(_YashAlvo, "
+		emitir("local _tamanho = _alvo.Size")
+		emitir(servico("TweenService") .. ":Create(_alvo, "
 			.. info .. ", {")
-		emitir("\tSize = UDim2.new(_YashTamanho.X.Scale * " .. m .. ", _YashTamanho.X.Offset * "
-			.. m .. ", _YashTamanho.Y.Scale * " .. m .. ", _YashTamanho.Y.Offset * " .. m .. "),")
-		emitir("})")
-		emitir("_YashTween:Play()")
+		emitir("\tSize = UDim2.new(_tamanho.X.Scale * " .. m .. ", _tamanho.X.Offset * "
+			.. m .. ", _tamanho.Y.Scale * " .. m .. ", _tamanho.Y.Offset * " .. m .. "),")
+		emitir("}):Play()")
 		emitir("task.delay(" .. numeroLua(dur / 2) .. ", function()")
-		emitir("\tlocal _YashMetade = " .. servico("TweenService") .. ":Create(_YashAlvo, "
+		emitir("\t" .. servico("TweenService") .. ":Create(_alvo, "
 			.. infoMeia .. ", {")
-		emitir("\t\tSize = _YashTamanho,")
-		emitir("\t})")
-		emitir("\t_YashMetade:Play()")
+		emitir("\t\tSize = _tamanho,")
+		emitir("\t}):Play()")
 		emitir("end)")
 		return ""
 	end
@@ -930,28 +923,26 @@ local function GerarLuau(programa, opcoes)
 	-- efeito girar: soma graus (padrao 360) na rotacao atual
 	local function efeitoGirar(info, spec)
 		local graus = spec.eparams.graus or 360
-		emitir("local _YashTween = " .. servico("TweenService") .. ":Create(_YashAlvo, "
+		emitir(servico("TweenService") .. ":Create(_alvo, "
 			.. info .. ", {")
-		emitir("\tRotation = _YashAlvo.Rotation + " .. numeroLua(graus) .. ",")
-		emitir("})")
-		emitir("_YashTween:Play()")
+		emitir("\tRotation = _alvo.Rotation + " .. numeroLua(graus) .. ",")
+		emitir("}):Play()")
 		return ""
 	end
 
 	-- efeito crescer/diminuir: multiplica o tamanho atual por um fator
 	local function efeitoEscala(info, spec, fator)
 		local m = numeroLua(fator)
-		emitir("local _YashTamanho = _YashAlvo.Size")
-		emitir("local _YashTween = " .. servico("TweenService") .. ":Create(_YashAlvo, "
+		emitir("local _tamanho = _alvo.Size")
+		emitir(servico("TweenService") .. ":Create(_alvo, "
 			.. info .. ", {")
-		emitir("\tSize = UDim2.new(_YashTamanho.X.Scale * " .. m .. ", _YashTamanho.X.Offset * "
-			.. m .. ", _YashTamanho.Y.Scale * " .. m .. ", _YashTamanho.Y.Offset * " .. m .. "),")
-		emitir("})")
-		emitir("_YashTween:Play()")
+		emitir("\tSize = UDim2.new(_tamanho.X.Scale * " .. m .. ", _tamanho.X.Offset * "
+			.. m .. ", _tamanho.Y.Scale * " .. m .. ", _tamanho.Y.Offset * " .. m .. "),")
+		emitir("}):Play()")
 		return ""
 	end
 
-	-- emite o corpo de um efeito (exige `local _YashAlvo` ja emitido)
+	-- emite o corpo de um efeito (exige `local _alvo` ja emitido)
 	local function emitirEfeito(ref, spec, onde)
 		local canon = canonizarEfeito(spec.efeito)
 		if not canon then
@@ -967,7 +958,7 @@ local function GerarLuau(programa, opcoes)
 		local info, extra = infoDeSpec(spec, onde)
 		if not info then return nil, extra end
 		local dur = extra
-		emitir("local _YashAlvo = " .. ref)
+		emitir("local _alvo = " .. ref)
 		local sl = SLIDES[canon]
 		if sl then
 			return efeitoSlide(info, spec, sl.eixo, sl.sinal)
@@ -991,13 +982,13 @@ local function GerarLuau(programa, opcoes)
 	local function nomeFnAnim(nome)
 		local limpo = string.gsub(tostring(nome), "[^%w_]", "_")
 		if string.match(limpo, "^%d") then limpo = "_" .. limpo end
-		return "_YashAnim_" .. limpo
+		return "_anim_" .. limpo
 	end
 
 	local function nomeFnAcao(nome)
 		local limpo = string.gsub(tostring(nome), "[^%w_]", "_")
 		if string.match(limpo, "^%d") then limpo = "_" .. limpo end
-		return "_YashAcao_" .. limpo
+		return "_acao_" .. limpo
 	end
 
 	-- devolve o nome da funcao se a animacao foi criada no programa, senao nil
@@ -1036,7 +1027,7 @@ local function GerarLuau(programa, opcoes)
 			if not gs then return nil, gerr end
 			local info, ierr = infoDeSpec(spec, onde)
 			if not info then return nil, ierr end
-			emitir("local _YashAlvo = " .. ref)
+			emitir("local _alvo = " .. ref)
 			return emitirGoalsPlay(info, gs)
 		end)
 		if not blk then return nil, e end
@@ -1091,9 +1082,9 @@ local function GerarLuau(programa, opcoes)
 			local valor = (c.oq == "visivel") and "true" or "false"
 			-- mesma regra do comando de visibilidade: LayerCollector (ScreenGui e
 			-- afins) expoe Enabled; o restante da GUI expoe Visible
-			return "((function() local _YashVis = " .. ref
-				.. " if _YashVis:IsA(\"LayerCollector\") then return _YashVis.Enabled"
-				.. " else return _YashVis.Visible end end)() == " .. valor .. ")"
+			return "((function() local _vis = " .. ref
+				.. " if _vis:IsA(\"LayerCollector\") then return _vis.Enabled"
+				.. " else return _vis.Visible end end)() == " .. valor .. ")"
 		end
 
 		if t == "tecla" then
@@ -1116,11 +1107,11 @@ local function GerarLuau(programa, opcoes)
 			local ref, err = gerarValor(c.alvoExpr or { k = "ident", v = c.alvo })
 			if not ref then return nil, err end
 			local compara = c.estado and "> 0" or "<= 0"
-			return "((function() if type(" .. ref .. ") == \"table\" then return (" .. ref .. ".vida or 0) " .. compara .. " end; local _YashHumanoide = (" .. ref
+			return "((function() if type(" .. ref .. ") == \"table\" then return (" .. ref .. ".vida or 0) " .. compara .. " end; local _humanoide = (" .. ref
 				.. "):IsA(\"Humanoid\") and " .. ref .. " or ("
 				.. ref .. "):IsA(\"Player\") and " .. ref
 				.. ".Character and " .. ref .. ".Character:FindFirstChildOfClass(\"Humanoid\") or ("
-				.. ref .. "):FindFirstChildOfClass(\"Humanoid\"); return _YashHumanoide ~= nil and _YashHumanoide.Health "
+				.. ref .. "):FindFirstChildOfClass(\"Humanoid\"); return _humanoide ~= nil and _humanoide.Health "
 				.. compara .. " end)())"
 		end
 
@@ -1129,9 +1120,9 @@ local function GerarLuau(programa, opcoes)
 			if not a then return nil, err end
 			local b, e = gerarValor(c.bExpr or { k = "ident", v = c.b })
 			if not b then return nil, e end
-			return "((function() for _, _YashParte in ipairs(" .. a .. ":GetTouchingParts()) do "
-				.. "if _YashParte == " .. b .. " or _YashParte:IsDescendantOf(" .. b
-				.. ") or " .. b .. ":IsDescendantOf(_YashParte) then return true end end; return false end)())"
+			return "((function() for _, _posarte in ipairs(" .. a .. ":GetTouchingParts()) do "
+				.. "if _posarte == " .. b .. " or _posarte:IsDescendantOf(" .. b
+				.. ") or " .. b .. ":IsDescendantOf(_posarte) then return true end end; return false end)())"
 		end
 
 		if t == "criado" then
@@ -1323,13 +1314,13 @@ local function GerarLuau(programa, opcoes)
 			if not indice then return nil, e end
 			local valor, verr = gerarValor(cmd.expr)
 			if not valor then return nil, verr end
-			local atribuir = cmd.op == "=" and ("_YashTabela[_YashIndice] = " .. valor)
-				or ("_YashTabela[_YashIndice] = _YashTabela[_YashIndice] "
+			local atribuir = cmd.op == "=" and ("_tabela[_indice] = " .. valor)
+				or ("_tabela[_indice] = _tabela[_indice] "
 					.. (cmd.op == "+=" and "+" or "-") .. " " .. valor)
 			emitir("do")
 			local bloco, be = blocoNovo(nivel() + 1, function()
-				emitir("local _YashTabela = " .. tabela)
-				emitir("local _YashIndice = " .. indice)
+				emitir("local _tabela = " .. tabela)
+				emitir("local _indice = " .. indice)
 				emitir(atribuir)
 				return ""
 			end)
@@ -1404,13 +1395,13 @@ local function GerarLuau(programa, opcoes)
 			end
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir("local _YashVis = " .. ref)
-				emitir("if _YashVis:IsA(\"LayerCollector\") then")
-				local s1, e1 = blocoNovo(nivel() + 1, corpoVisibilidade("_YashVis.Enabled"))
+				emitir("local _vis = " .. ref)
+				emitir("if _vis:IsA(\"LayerCollector\") then")
+				local s1, e1 = blocoNovo(nivel() + 1, corpoVisibilidade("_vis.Enabled"))
 				if not s1 then return nil, e1 end
 				anexar(s1)
 				emitir("else")
-				local s2, e2 = blocoNovo(nivel() + 1, corpoVisibilidade("_YashVis.Visible"))
+				local s2, e2 = blocoNovo(nivel() + 1, corpoVisibilidade("_vis.Visible"))
 				if not s2 then return nil, e2 end
 				anexar(s2)
 				emitir("end")
@@ -1435,26 +1426,26 @@ local function GerarLuau(programa, opcoes)
 			local mudaTudo = cmd.acao == "mudar"
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir("local _YashCenaAtual = " .. nome)
-				emitir("for _, _YashInstancia in ipairs(" .. workspace .. ":GetDescendants()) do")
-				emitir("\tif _YashInstancia:GetAttribute(\"YashCena\") then")
-				emitir("\t\tlocal _YashMostrarCena = _YashInstancia:GetAttribute(\"YashCena\") == _YashCenaAtual")
+				emitir("local _cenaAtual = " .. nome)
+				emitir("for _, _instancia in ipairs(" .. workspace .. ":GetDescendants()) do")
+				emitir("\tif _instancia:GetAttribute(\"Cena\") then")
+				emitir("\t\tlocal _mostrarCena = _instancia:GetAttribute(\"Cena\") == _cenaAtual")
 				if mudaTudo then
-					emitir("\t\tif _YashInstancia:IsA(\"GuiObject\") then _YashInstancia.Visible = _YashMostrarCena")
-					emitir("\t\telseif _YashInstancia:IsA(\"BasePart\") then _YashInstancia.Transparency = _YashMostrarCena and 0 or 1; _YashInstancia.CanCollide = _YashMostrarCena end")
+					emitir("\t\tif _instancia:IsA(\"GuiObject\") then _instancia.Visible = _mostrarCena")
+					emitir("\t\telseif _instancia:IsA(\"BasePart\") then _instancia.Transparency = _mostrarCena and 0 or 1; _instancia.CanCollide = _mostrarCena end")
 				else
-					emitir("\t\tif _YashMostrarCena and _YashInstancia:IsA(\"GuiObject\") then _YashInstancia.Visible = " .. tostring(ativo))
-					emitir("\t\telseif _YashMostrarCena and _YashInstancia:IsA(\"BasePart\") then _YashInstancia.Transparency = " .. (ativo and "0" or "1") .. "; _YashInstancia.CanCollide = " .. tostring(ativo) .. " end")
+					emitir("\t\tif _mostrarCena and _instancia:IsA(\"GuiObject\") then _instancia.Visible = " .. tostring(ativo))
+					emitir("\t\telseif _mostrarCena and _instancia:IsA(\"BasePart\") then _instancia.Transparency = " .. (ativo and "0" or "1") .. "; _instancia.CanCollide = " .. tostring(ativo) .. " end")
 				end
 				emitir("\tend")
 				emitir("end")
-				emitir("local _YashJogador = " .. players .. ".LocalPlayer")
-				emitir("local _YashGui = _YashJogador and _YashJogador:FindFirstChildOfClass(\"PlayerGui\")")
-				emitir("if _YashGui then for _, _YashInstancia in ipairs(_YashGui:GetDescendants()) do")
+				emitir("local _jogador = " .. players .. ".LocalPlayer")
+				emitir("local _gui = _jogador and _jogador:FindFirstChildOfClass(\"PlayerGui\")")
+				emitir("if _gui then for _, _instancia in ipairs(_gui:GetDescendants()) do")
 				if mudaTudo then
-					emitir("\tif _YashInstancia:GetAttribute(\"YashCena\") then _YashInstancia.Visible = (_YashInstancia:GetAttribute(\"YashCena\") == _YashCenaAtual) end")
+					emitir("\tif _instancia:GetAttribute(\"Cena\") then _instancia.Visible = (_instancia:GetAttribute(\"Cena\") == _cenaAtual) end")
 				else
-					emitir("\tif _YashInstancia:GetAttribute(\"YashCena\") == _YashCenaAtual then _YashInstancia.Visible = " .. tostring(ativo) .. " end")
+					emitir("\tif _instancia:GetAttribute(\"Cena\") == _cenaAtual then _instancia.Visible = " .. tostring(ativo) .. " end")
 				end
 				emitir("end end")
 				return ""
@@ -1556,24 +1547,24 @@ local function GerarLuau(programa, opcoes)
 			if not alvo then return nil, err end
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir("local _YashAlvoVida = " .. alvo)
-				emitir("if type(_YashAlvoVida) == \"table\" and type(_YashAlvoVida.vida) == \"number\" then")
+				emitir("local _alvoVida = " .. alvo)
+				emitir("if type(_alvoVida) == \"table\" and type(_alvoVida.vida) == \"number\" then")
 				if t == "dano" then
-					emitir("\t_YashAlvoVida.vida = math.max(0, _YashAlvoVida.vida - " .. numeroLua(cmd.valor) .. ")")
+					emitir("\t_alvoVida.vida = math.max(0, _alvoVida.vida - " .. numeroLua(cmd.valor) .. ")")
 				elseif t == "curar" then
-					emitir("\t_YashAlvoVida.vida = math.min(_YashAlvoVida.vida_maxima or math.huge, _YashAlvoVida.vida + " .. numeroLua(cmd.valor) .. ")")
+					emitir("\t_alvoVida.vida = math.min(_alvoVida.vida_maxima or math.huge, _alvoVida.vida + " .. numeroLua(cmd.valor) .. ")")
 				else
-					emitir("\t_YashAlvoVida.vida = 0")
+					emitir("\t_alvoVida.vida = 0")
 				end
 				emitir("else")
-				emitir("local _YashHumanoide = (_YashAlvoVida:IsA(\"Humanoid\") and _YashAlvoVida) or (_YashAlvoVida:IsA(\"Player\") and _YashAlvoVida.Character and _YashAlvoVida.Character:FindFirstChildOfClass(\"Humanoid\")) or _YashAlvoVida:FindFirstChildOfClass(\"Humanoid\")")
-				emitir("if _YashHumanoide then")
+				emitir("local _humanoide = (_alvoVida:IsA(\"Humanoid\") and _alvoVida) or (_alvoVida:IsA(\"Player\") and _alvoVida.Character and _alvoVida.Character:FindFirstChildOfClass(\"Humanoid\")) or _alvoVida:FindFirstChildOfClass(\"Humanoid\")")
+				emitir("if _humanoide then")
 				if t == "dano" then
-					emitir("\t_YashHumanoide:TakeDamage(" .. numeroLua(cmd.valor) .. ")")
+					emitir("\t_humanoide:TakeDamage(" .. numeroLua(cmd.valor) .. ")")
 				elseif t == "curar" then
-					emitir("\t_YashHumanoide.Health = math.clamp(_YashHumanoide.Health + " .. numeroLua(cmd.valor) .. ", 0, _YashHumanoide.MaxHealth)")
+					emitir("\t_humanoide.Health = math.clamp(_humanoide.Health + " .. numeroLua(cmd.valor) .. ", 0, _humanoide.MaxHealth)")
 				else
-					emitir("\t_YashHumanoide.Health = 0")
+					emitir("\t_humanoide.Health = 0")
 				end
 				emitir("end")
 				emitir("end")
@@ -1590,9 +1581,9 @@ local function GerarLuau(programa, opcoes)
 			local players = servico("Players")
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir("local _YashAlvoVida = " .. alvo)
-				emitir("local _YashPlayer = (_YashAlvoVida:IsA(\"Player\") and _YashAlvoVida) or " .. players .. ":GetPlayerFromCharacter(_YashAlvoVida) or " .. players .. ":FindFirstChild(_YashAlvoVida.Name)")
-				emitir("if _YashPlayer then _YashPlayer:LoadCharacter() end")
+				emitir("local _alvoVida = " .. alvo)
+				emitir("local _player = (_alvoVida:IsA(\"Player\") and _alvoVida) or " .. players .. ":GetPlayerFromCharacter(_alvoVida) or " .. players .. ":FindFirstChild(_alvoVida.Name)")
+				emitir("if _player then _player:LoadCharacter() end")
 				return ""
 			end)
 			if not blk then return nil, e end
@@ -1616,29 +1607,28 @@ local function GerarLuau(programa, opcoes)
 			if t == "mover" then
 				cf = "CFrame.new(" .. numeroLua(cmd.para.x) .. ", " .. numeroLua(cmd.para.y) .. ", " .. numeroLua(cmd.para.z or 0) .. ")"
 			else
-				cf = "CFrame.new(_YashAlvo:GetPivot().Position) * CFrame.Angles(math.rad(" .. numeroLua(cmd.para.x) .. "), math.rad(" .. numeroLua(cmd.para.y) .. "), math.rad(" .. numeroLua(cmd.para.z or 0) .. "))"
+				cf = "CFrame.new(_alvo:GetPivot().Position) * CFrame.Angles(math.rad(" .. numeroLua(cmd.para.x) .. "), math.rad(" .. numeroLua(cmd.para.y) .. "), math.rad(" .. numeroLua(cmd.para.z or 0) .. "))"
 			end
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir("local _YashAlvo = " .. alvo)
-				emitir("local _YashInicio = _YashAlvo:GetPivot()")
+				emitir("local _alvo = " .. alvo)
+				emitir("local _inicio = _alvo:GetPivot()")
 				if t == "mover" then
-					emitir("local _YashDestino = CFrame.new(" .. numeroLua(cmd.para.x) .. ", " .. numeroLua(cmd.para.y) .. ", " .. numeroLua(cmd.para.z or 0) .. ") * _YashInicio.Rotation")
+					emitir("local _destino = CFrame.new(" .. numeroLua(cmd.para.x) .. ", " .. numeroLua(cmd.para.y) .. ", " .. numeroLua(cmd.para.z or 0) .. ") * _inicio.Rotation")
 				else
-					emitir("local _YashDestino = " .. cf)
+					emitir("local _destino = " .. cf)
 				end
-				emitir("if _YashAlvo:IsA(\"BasePart\") then")
-				emitir("\tlocal _YashTween = " .. tweenService .. ":Create(_YashAlvo, TweenInfo.new(" .. numeroLua(duracao) .. "), { CFrame = _YashDestino })")
-				emitir("\t_YashTween:Play()")
+				emitir("if _alvo:IsA(\"BasePart\") then")
+				emitir("\t" .. tweenService .. ":Create(_alvo, TweenInfo.new(" .. numeroLua(duracao) .. "), { CFrame = _destino }):Play()")
 				emitir("else")
 				emitir("\ttask.spawn(function()")
-				emitir("\t\tlocal _YashInicioTempo = os.clock()")
-				emitir("\t\twhile _YashAlvo.Parent and os.clock() - _YashInicioTempo < " .. numeroLua(duracao) .. " do")
-				emitir("\t\t\tlocal _YashAlpha = math.clamp((os.clock() - _YashInicioTempo) / math.max(" .. numeroLua(duracao) .. ", 0.001), 0, 1)")
-				emitir("\t\t\t_YashAlvo:PivotTo(_YashInicio:Lerp(_YashDestino, _YashAlpha))")
+				emitir("\t\tlocal _inicioTempo = os.clock()")
+				emitir("\t\twhile _alvo.Parent and os.clock() - _inicioTempo < " .. numeroLua(duracao) .. " do")
+				emitir("\t\t\tlocal _alpha = math.clamp((os.clock() - _inicioTempo) / math.max(" .. numeroLua(duracao) .. ", 0.001), 0, 1)")
+				emitir("\t\t\t_alvo:PivotTo(_inicio:Lerp(_destino, _alpha))")
 				emitir("\t\t\ttask.wait()")
 				emitir("\t\tend")
-				emitir("\t\tif _YashAlvo.Parent then _YashAlvo:PivotTo(_YashDestino) end")
+				emitir("\t\tif _alvo.Parent then _alvo:PivotTo(_destino) end")
 				emitir("\tend)")
 				emitir("end")
 				return ""
@@ -1653,11 +1643,11 @@ local function GerarLuau(programa, opcoes)
 			local debris = servico("Debris")
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir('local _YashSom = Instance.new("Sound")')
-				emitir('_YashSom.SoundId = "rbxassetid://' .. tostring(cmd.id) .. '"')
-				emitir("_YashSom.Parent = " .. soundService)
-				emitir("_YashSom:Play()")
-				emitir(debris .. ":AddItem(_YashSom, 5)")
+				emitir('local _som = Instance.new("Sound")')
+				emitir('_som.SoundId = "rbxassetid://' .. tostring(cmd.id) .. '"')
+				emitir("_som.Parent = " .. soundService)
+				emitir("_som:Play()")
+				emitir(debris .. ":AddItem(_som, 5)")
 				return ""
 			end)
 			if not blk then return nil, e end
@@ -1699,11 +1689,11 @@ local function GerarLuau(programa, opcoes)
 			local workspace = servico("Workspace")
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir('local _YashExplosao = Instance.new("Explosion")')
-				emitir("_YashExplosao.Position = " .. alvo .. ":GetPivot().Position")
-				emitir("_YashExplosao.BlastRadius = " .. numeroLua(cmd.raio or 8))
-				emitir("_YashExplosao.BlastPressure = " .. numeroLua(cmd.dano or 50))
-				emitir("_YashExplosao.Parent = " .. workspace)
+				emitir('local _explosao = Instance.new("Explosion")')
+				emitir("_explosao.Position = " .. alvo .. ":GetPivot().Position")
+				emitir("_explosao.BlastRadius = " .. numeroLua(cmd.raio or 8))
+				emitir("_explosao.BlastPressure = " .. numeroLua(cmd.dano or 50))
+				emitir("_explosao.Parent = " .. workspace)
 				return ""
 			end)
 			if not blk then return nil, e end
@@ -1718,11 +1708,11 @@ local function GerarLuau(programa, opcoes)
 			if not alvo then return nil, e end
 			emitir("task.spawn(function()")
 			local blk, be = blocoNovo(nivel() + 1, function()
-				emitir("local _YashQuem = " .. quem)
-				emitir("local _YashPersonagemAlvo = _YashQuem:IsA(\"Player\") and (_YashQuem.Character or _YashQuem.CharacterAdded:Wait()) or _YashQuem")
-				emitir("local _YashHumanoide = _YashPersonagemAlvo:IsA(\"Humanoid\") and _YashPersonagemAlvo or _YashPersonagemAlvo:FindFirstChildOfClass(\"Humanoid\")")
-				emitir("while _YashPersonagemAlvo.Parent and " .. alvo .. ".Parent do")
-				emitir("\tif _YashHumanoide then _YashHumanoide:MoveTo(" .. alvo .. ":GetPivot().Position) else _YashPersonagemAlvo:PivotTo(" .. alvo .. ":GetPivot()) end")
+				emitir("local _quem = " .. quem)
+				emitir("local _personagemAlvo = _quem:IsA(\"Player\") and (_quem.Character or _quem.CharacterAdded:Wait()) or _quem")
+				emitir("local _humanoide = _personagemAlvo:IsA(\"Humanoid\") and _personagemAlvo or _personagemAlvo:FindFirstChildOfClass(\"Humanoid\")")
+				emitir("while _personagemAlvo.Parent and " .. alvo .. ".Parent do")
+				emitir("\tif _humanoide then _humanoide:MoveTo(" .. alvo .. ":GetPivot().Position) else _personagemAlvo:PivotTo(" .. alvo .. ":GetPivot()) end")
 				emitir("\ttask.wait(0.2)")
 				emitir("end")
 				return ""
@@ -1739,17 +1729,17 @@ local function GerarLuau(programa, opcoes)
 			if not origem then return nil, err end
 			local pai, e = gerarReferencia({ k = #paiParts > 1 and "caminho" or "ident", partes = paiParts, v = paiParts[1] })
 			if not pai then return nil, e end
-			local clone = cmd.nome and aliases[cmd.nome] or "_YashInstanciaClonada"
+			local clone = cmd.nome and aliases[cmd.nome] or "_instanciaClonada"
 			if cmd.nome and not clone then return nil, "variavel de destino do clonar nao foi declarada: " .. tostring(cmd.nome) end
 			emitir("do")
 			local blk, be = blocoNovo(nivel() + 1, function()
-				emitir("local _YashCopiaTemp = " .. origem .. ":Clone()")
-				emitir("if _YashCopiaTemp then")
+				emitir("local _copiaTemp = " .. origem .. ":Clone()")
+				emitir("if _copiaTemp then")
 				if cmd.nome then
-					emitir("\t" .. clone .. " = _YashCopiaTemp")
+					emitir("\t" .. clone .. " = _copiaTemp")
 					emitir("\t" .. clone .. ".Name = " .. textoLua(cmd.nome))
 				end
-				emitir("\t_YashCopiaTemp.Parent = " .. pai)
+				emitir("\t_copiaTemp.Parent = " .. pai)
 				emitir("end")
 				return ""
 			end)
@@ -1939,7 +1929,7 @@ local function GerarLuau(programa, opcoes)
 		for _, declaracoesNomes in ipairs({ programa.elementos or {}, programa.formas or {}, programa.objetos or {}, programa.huds or {} }) do
 			if declaracoesNomes[nome] then return false, { erro = "nome de função conflita com objeto declarado: " .. nome, linha = 0 } end
 		end
-		local interno = nomeInterno("_YashFunc_", nome)
+		local interno = nome
 		if aliases[nome] then return false, { erro = "nome de função conflita com outro identificador: " .. nome, linha = 0 } end
 		aliases[nome] = interno
 		LOCAIS_GERADOS[interno] = true
@@ -2039,7 +2029,7 @@ local function GerarLuau(programa, opcoes)
 	for _, nome in ipairs(sortearNomes) do table.insert(nomesTemporarios, nome) end
 	if #nomesTemporarios > 0 then table.insert(inicializadores, "local " .. table.concat(nomesTemporarios, ", ")) end
 	for _, nome in ipairs(nomesOrdenados(programa.objetos)) do
-		local var = nomeInterno("_YashDados_", nome)
+		local var = nomeInterno("_dados_", nome)
 		if varsCriadas[var] and varsCriadas[var] ~= nome then return false, { erro = "nomes de objetos geram colisao interna: " .. nome, linha = 0 } end
 		varsCriadas[var] = nome
 		aliases[nome] = var
@@ -2057,23 +2047,23 @@ local function GerarLuau(programa, opcoes)
 		and next(programa.elementos or {}) == nil and (not programa.site or next(programa.site) == nil)
 	if temGui then
 		servico("Players")
-		table.insert(inicializadores, 'local _YashTela = Instance.new("ScreenGui")')
-		table.insert(inicializadores, '_YashTela.Name = "YashScriptGui"')
-		table.insert(inicializadores, '_YashTela.ResetOnSpawn = false')
+		table.insert(inicializadores, 'local _tela = Instance.new("ScreenGui")')
+		table.insert(inicializadores, '_tela.Name = "Tela"')
+		table.insert(inicializadores, '_tela.ResetOnSpawn = false')
 		if hudServidor then
-			table.insert(inicializadores, '_YashTela.Archivable = true')
+			table.insert(inicializadores, '_tela.Archivable = true')
 		elseif contexto == "servidor" then
 			return false, { erro = "criar elementos de interface requer LocalScript; no servidor, use criar hud", linha = 0 }
 		else
-			table.insert(inicializadores, '_YashTela.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")')
+			table.insert(inicializadores, '_tela.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")')
 		end
-		table.insert(inicializadores, 'local _YashRootFrame = Instance.new("Frame")')
-		table.insert(inicializadores, '_YashRootFrame.Name = "Raiz"')
-		table.insert(inicializadores, '_YashRootFrame.Size = UDim2.fromScale(1, 1)')
-		table.insert(inicializadores, '_YashRootFrame.BackgroundTransparency = 1')
+		table.insert(inicializadores, 'local _frameRaiz = Instance.new("Frame")')
+		table.insert(inicializadores, '_frameRaiz.Name = "Raiz"')
+		table.insert(inicializadores, '_frameRaiz.Size = UDim2.fromScale(1, 1)')
+		table.insert(inicializadores, '_frameRaiz.BackgroundTransparency = 1')
 		local fundo = programa.site and programa.site.fundo
-		if fundo then table.insert(inicializadores, "_YashRootFrame.BackgroundColor3 = " .. (legadoLua(fundo, "fundo", true) or "Color3.new(0, 0, 0)")); table.insert(inicializadores, "_YashRootFrame.BackgroundTransparency = 0") end
-		table.insert(inicializadores, '_YashRootFrame.Parent = _YashTela')
+		if fundo then table.insert(inicializadores, "_frameRaiz.BackgroundColor3 = " .. (legadoLua(fundo, "fundo", true) or "Color3.new(0, 0, 0)")); table.insert(inicializadores, "_frameRaiz.BackgroundTransparency = 0") end
+		table.insert(inicializadores, '_frameRaiz.Parent = _tela')
 	end
 	local classesGui = { painel = "Frame", texto = "TextLabel", botao = "TextButton", campo = "TextBox", imagem = "ImageLabel", elemento = "Frame" }
 	local function emitirProps(var, props, gui)
@@ -2104,7 +2094,7 @@ local function GerarLuau(programa, opcoes)
 		local propsBase = def.props or {}
 		local estilo = propsBase.estilo and programa.estilos and programa.estilos[propsBase.estilo] or nil
 		local props = mesclar(estilo, propsBase)
-		local var = nomeInterno("_YashCriado_", nome)
+		local var = nomeInterno("_criado_", nome)
 		aliases[nome] = var
 		local class = classesGui[def.tipo] or "Frame"
 		table.insert(inicializadores, "local " .. var .. " = Instance.new(" .. textoLua(class) .. ")")
@@ -2113,22 +2103,22 @@ local function GerarLuau(programa, opcoes)
 			table.insert(inicializadores, var .. ".Size = UDim2.fromOffset(100, 40)")
 			table.insert(inicializadores, var .. ".BackgroundColor3 = Color3.fromRGB(35, 35, 45)")
 		end
-		if props.cena then table.insert(inicializadores, var .. ":SetAttribute(\"YashCena\", " .. textoLua(props.cena) .. ")") end
+		if props.cena then table.insert(inicializadores, var .. ":SetAttribute(\"Cena\", " .. textoLua(props.cena) .. ")") end
 		if props.cena and not cenaVisivel(props.cena) then table.insert(inicializadores, var .. ".Visible = false") end
 		emitirProps(var, props, true)
 		if props.arredondamento then
-			local corner = nomeInterno("_YashCanto_", nome)
+			local corner = nomeInterno("_canto_", nome)
 			table.insert(inicializadores, "local " .. corner .. ' = Instance.new("UICorner")')
 			table.insert(inicializadores, corner .. ".CornerRadius = UDim.new(0, " .. numeroLua(tonumber(props.arredondamento) or 8) .. ")")
 			table.insert(inicializadores, corner .. ".Parent = " .. var)
 		end
-		local pai = props.pai and aliases[props.pai] or "_YashRootFrame"
+		local pai = props.pai and aliases[props.pai] or "_frameRaiz"
 		if props.largura or props.altura then
 			local largura = tonumber(props.largura) or 100
 			local altura = tonumber(props.altura) or 40
 			table.insert(inicializadores, var .. ".Size = UDim2.fromOffset(" .. numeroLua(largura) .. ", " .. numeroLua(altura) .. ")")
 		end
-		table.insert(inicializadores, var .. ".Parent = " .. (pai or "_YashRootFrame"))
+		table.insert(inicializadores, var .. ".Parent = " .. (pai or "_frameRaiz"))
 	end
 	local nomesHuds = {}
 	local hudsGerados = {}
@@ -2136,7 +2126,7 @@ local function GerarLuau(programa, opcoes)
 	table.sort(nomesHuds)
 	for indice, nome in ipairs(nomesHuds) do
 		local def = programa.huds[nome]
-		local var = nomeInterno("_YashHud_", nome)
+		local var = nomeInterno("_hud_", nome)
 		aliases[nome] = var
 		table.insert(inicializadores, 'local ' .. var .. ' = Instance.new("TextLabel")')
 		table.insert(inicializadores, var .. ".Name = " .. textoLua(nome))
@@ -2144,7 +2134,7 @@ local function GerarLuau(programa, opcoes)
 		table.insert(inicializadores, var .. ".Size = UDim2.fromOffset(240, 28)")
 		table.insert(inicializadores, var .. '.BackgroundTransparency = 1')
 		table.insert(inicializadores, var .. '.TextXAlignment = Enum.TextXAlignment.Left')
-		table.insert(inicializadores, var .. '.Parent = _YashRootFrame')
+		table.insert(inicializadores, var .. '.Parent = _frameRaiz')
 		local partes = dividirCaminho(def.campo or "")
 		local expr = #partes > 1 and { k = "caminho", partes = partes } or { k = "ident", v = partes[1] or "" }
 		local valor, err = gerarValor(expr)
@@ -2156,22 +2146,22 @@ local function GerarLuau(programa, opcoes)
 		end
 	end
 	if hudServidor then
-		table.insert(inicializadores, "local _YashCriarHUD = function(_YashJogador)")
-		table.insert(inicializadores, "\tlocal _YashTelaJogador = _YashTela:Clone()")
-		table.insert(inicializadores, "\t_YashTelaJogador.Parent = _YashJogador:WaitForChild(\"PlayerGui\")")
+		table.insert(inicializadores, "local _criarHUD = function(_jogador)")
+		table.insert(inicializadores, "\tlocal _telaJogador = _tela:Clone()")
+		table.insert(inicializadores, "\t_telaJogador.Parent = _jogador:WaitForChild(\"PlayerGui\")")
 		table.insert(inicializadores, "\ttask.spawn(function()")
-		table.insert(inicializadores, "\t\twhile _YashTelaJogador.Parent do")
+		table.insert(inicializadores, "\t\twhile _telaJogador.Parent do")
 		for _, hud in ipairs(hudsGerados) do
-			local label = nomeInterno("_YashLabelHUD_", hud.nome)
-			table.insert(inicializadores, "\t\t\tlocal " .. label .. " = _YashTelaJogador:FindFirstChild(" .. textoLua(hud.nome) .. ", true)")
+			local label = nomeInterno("_labelHud_", hud.nome)
+			table.insert(inicializadores, "\t\t\tlocal " .. label .. " = _telaJogador:FindFirstChild(" .. textoLua(hud.nome) .. ", true)")
 			table.insert(inicializadores, "\t\t\tif " .. label .. " then " .. label .. ".Text = " .. textoLua(hud.nome .. ": ") .. " .. tostring(" .. hud.valor .. ") end")
 		end
 		table.insert(inicializadores, "\t\t\ttask.wait(0.1)")
 		table.insert(inicializadores, "\t\tend")
 		table.insert(inicializadores, "\tend)")
 		table.insert(inicializadores, "end")
-		table.insert(inicializadores, "for _, _YashJogador in ipairs(Players:GetPlayers()) do _YashCriarHUD(_YashJogador) end")
-		table.insert(inicializadores, "Players.PlayerAdded:Connect(_YashCriarHUD)")
+		table.insert(inicializadores, "for _, _jogador in ipairs(Players:GetPlayers()) do _criarHUD(_jogador) end")
+		table.insert(inicializadores, "Players.PlayerAdded:Connect(_criarHUD)")
 	end
 	local classesForma = { bloco = "Block", paralelepipedo = "Block", plataforma = "Block", esfera = "Ball", cilindro = "Cylinder", cunha = "Wedge" }
 	local nomesForma = {}
@@ -2180,14 +2170,14 @@ local function GerarLuau(programa, opcoes)
 	for _, nome in ipairs(nomesForma) do
 		local def = programa.formas[nome]
 		local props = def.props or {}
-		local var = nomeInterno("_YashCriado_", nome)
+		local var = nomeInterno("_criado_", nome)
 		aliases[nome] = var
 		table.insert(inicializadores, 'local ' .. var .. ' = Instance.new("Part")')
 		table.insert(inicializadores, var .. ".Name = " .. textoLua(nome))
 		table.insert(inicializadores, var .. ".Shape = Enum.PartType." .. (classesForma[def.tipo] or "Block"))
 		table.insert(inicializadores, var .. ".Anchored = true")
 		table.insert(inicializadores, var .. ".CanCollide = true")
-		if props.cena then table.insert(inicializadores, var .. ':SetAttribute("YashCena", ' .. textoLua(props.cena) .. ")") end
+		if props.cena then table.insert(inicializadores, var .. ':SetAttribute("Cena", ' .. textoLua(props.cena) .. ")") end
 		if props.cena and not cenaVisivel(props.cena) then
 			table.insert(inicializadores, var .. ".Transparency = 1")
 			table.insert(inicializadores, var .. ".CanCollide = false")
@@ -2386,7 +2376,7 @@ local function GerarLuau(programa, opcoes)
 	for _, nome in ipairs(nomesAcoes) do
 		local fn = funcoesDef["acao:" .. nome]
 		local anterior = alvoEvento
-		alvoEvento = "_YashAcaoAlvo"
+		alvoEvento = "_acaoAlvo"
 		local funcaoAnterior = dentroFuncao
 		dentroFuncao = true
 		local corpo, err = gerarCorpoComLocais(programa.acoes[nome], 1, function()
@@ -2395,7 +2385,7 @@ local function GerarLuau(programa, opcoes)
 		dentroFuncao = funcaoAnterior
 		alvoEvento = anterior
 		if not corpo then return false, { erro = "acao `" .. nome .. "`: " .. tostring(err), linha = 0 } end
-		local bloco = { fn .. " = function(_YashAcaoAlvo)" }
+		local bloco = { fn .. " = function(_acaoAlvo)" }
 		for _, linha in ipairs(corpo) do table.insert(bloco, linha) end
 		table.insert(bloco, "end")
 		table.insert(blocosDef, bloco)
@@ -2449,7 +2439,7 @@ local function GerarLuau(programa, opcoes)
 
 	for _, ev in ipairs(eventos) do
 		if ev.tipo == "connect" then
-			local arg = ev.info.argumento and "_YashAlvo" or ""
+			local arg = ev.info.argumento and "_alvo" or ""
 			local repete = ev.info.repete == true
 			local corpo, err
 			local anterior = alvoEvento
@@ -2475,30 +2465,30 @@ local function GerarLuau(programa, opcoes)
 			if repete then
 				-- ultimoToque vive num escopo proprio: cada evento tem o dele
 				table.insert(bloco, "do")
-				table.insert(bloco, "\tlocal _YashUltimoToque = 0")
+				table.insert(bloco, "\tlocal _ultimoToque = 0")
 			end
 			table.insert(bloco, ind .. ev.ref .. "." .. ev.info.evento
 				.. ":Connect(function(" .. arg .. ")")
 			if repete and ev.sujeito then
 				-- mesma ordem do Runtime legado: primeiro o sujeito, depois o
 				-- debounce -- um toque que nao e do sujeito nao consome a janela
-				table.insert(bloco, "\t\tlocal _YashPersonagem = _YashAlvo:FindFirstAncestorOfClass(\"Model\")")
+				table.insert(bloco, "\t\tlocal _personagem = _alvo:FindFirstAncestorOfClass(\"Model\")")
 				if ev.sujeito.tipo == "logico" then
-					table.insert(bloco, "\t\tif not (_YashPersonagem and _YashPersonagem:FindFirstChildOfClass(\"Humanoid\")) then return end")
+					table.insert(bloco, "\t\tif not (_personagem and _personagem:FindFirstChildOfClass(\"Humanoid\")) then return end")
 				else
 					local ref = ev.sujeito.ref
-					table.insert(bloco, "\t\tlocal _YashDoSujeito = _YashAlvo:IsDescendantOf(" .. ref
-						.. ") or " .. ref .. ":IsDescendantOf(_YashAlvo)")
-					table.insert(bloco, "\t\t\tor (_YashPersonagem and (_YashPersonagem:IsDescendantOf(" .. ref
-						.. ") or " .. ref .. ":IsDescendantOf(_YashPersonagem)))")
-					table.insert(bloco, "\t\tif not _YashDoSujeito then return end")
+					table.insert(bloco, "\t\tlocal _doSujeito = _alvo:IsDescendantOf(" .. ref
+						.. ") or " .. ref .. ":IsDescendantOf(_alvo)")
+					table.insert(bloco, "\t\t\tor (_personagem and (_personagem:IsDescendantOf(" .. ref
+						.. ") or " .. ref .. ":IsDescendantOf(_personagem)))")
+					table.insert(bloco, "\t\tif not _doSujeito then return end")
 				end
 			end
 			if repete then
-				table.insert(bloco, "\t\tlocal _YashAgora = os.clock()")
-				table.insert(bloco, "\t\tif _YashAgora - _YashUltimoToque < "
+				table.insert(bloco, "\t\tlocal _agora = os.clock()")
+				table.insert(bloco, "\t\tif _agora - _ultimoToque < "
 					.. numeroLua(DEBOUNCE_TOQUE) .. " then return end")
-				table.insert(bloco, "\t\t_YashUltimoToque = _YashAgora")
+				table.insert(bloco, "\t\t_ultimoToque = _agora")
 			end
 			for _, linha in ipairs(corpo) do table.insert(bloco, linha) end
 			if repete then
@@ -2587,17 +2577,10 @@ local function GerarLuau(programa, opcoes)
 	-- monta o texto final
 	-----------------------------------------------------------------------
 
-	local cabecalho = {
-		"-- Generated by YashScript v" .. Gerador.VERSAO,
-		"-- Fonte YashScript: atributo \"" .. (opcoes.atributo or "YashScript") .. "\" deste script.",
-		"-- Contexto: " .. contexto .. (modulo and " (ModuleScript)" or "") .. ".",
-	}
-	for _, l in ipairs(cabecalho) do table.insert(linhas, l) end
-
 	-- local do ScreenGui quando o script vive dentro de um
 	if usadoRaiz then
 		table.insert(linhas, "")
-		table.insert(linhas, 'local _YashRaiz = script:IsA("ScreenGui") and script '
+		table.insert(linhas, 'local _raiz = script:IsA("ScreenGui") and script '
 			.. 'or script:FindFirstAncestorWhichIsA("ScreenGui")')
 	end
 

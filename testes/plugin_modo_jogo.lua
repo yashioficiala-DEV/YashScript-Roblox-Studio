@@ -109,8 +109,8 @@ fim
 	if luau then
 		checar(semVestigios(luau) == nil,
 			"milestone: sem vesticio legado", semVestigios(luau))
-		checar(luau:find("_YashRaiz:WaitForChild") ~= nil,
-			"milestone: usa _YashRaiz (ancestral ScreenGui)")
+		checar(luau:find("local _raiz = script:IsA") ~= nil,
+			"milestone: usa _raiz (ancestral ScreenGui)")
 		-- com ancestral, o ScreenGui NAO e esperado: resolvemos a partir dele
 		checar(luau:find('WaitForChild%("ScreenGui') == nil,
 			"milestone: nao espera o ScreenGui (resolve pelo ancestral)")
@@ -163,7 +163,7 @@ fim
 	checar(luau ~= nil, "cliente sem ancestral: gera Luau")
 	if luau then
 		checar(luau:find("PlayerGui") ~= nil, "cliente sem ancestral: usa PlayerGui")
-		checar(luau:find("_YashRaiz") == nil, "cliente sem ancestral: nao usa _YashRaiz")
+		checar(luau:find("_raiz") == nil, "cliente sem ancestral: nao usa _raiz")
 	end
 end
 
@@ -291,7 +291,7 @@ fim
 	local luau, erro = gerarLuau(fonte, opcoesDoAlvo("LocalScript", { "ScreenGui", "Frame" }))
 	checar(luau ~= nil, "exemplo: gera Luau", erro)
 	if luau then
-		checar(contem(luau, 'local Jogar = _YashRaiz:WaitForChild("Frame"):WaitForChild("Jogar")'),
+		checar(contem(luau, 'local Jogar = _raiz:WaitForChild("Frame"):WaitForChild("Jogar")'),
 			"exemplo: alias resolve pelo ancestral ScreenGui")
 		checar(contem(luau, "Jogar.MouseButton1Click:Connect(function()"),
 			"exemplo: conecta o clique")
@@ -315,7 +315,7 @@ fim
 	local luau, erro = gerarLuau(fonte, opcoesDoAlvo("LocalScript", { "ScreenGui", "Frame" }))
 	checar(luau ~= nil, "hierarquia: Jogar resolve sem usar", erro)
 	if luau then
-		checar(contem(luau, '_YashRaiz:WaitForChild("Frame"):WaitForChild("Jogar")'),
+		checar(contem(luau, '_raiz:WaitForChild("Frame"):WaitForChild("Jogar")'),
 			"hierarquia: caminho parte do script.Parent")
 		checar(contem(luau, '.MouseButton1Click:Connect(function()'),
 			"hierarquia: conecta no clique do Jogar")
@@ -345,12 +345,12 @@ fim
 	checar(luau ~= nil, "tocar: gera Luau", erro)
 	if luau then
 		checar(semVestigios(luau) == nil, "tocar: sem vesticio legado", semVestigios(luau))
-		checar(contem(luau, "Moeda.Touched:Connect(function(_YashAlvo)"),
+		checar(contem(luau, "Moeda.Touched:Connect(function(_alvo)"),
 			"tocar: conecta em Touched com o argumento")
-		checar(contem(luau, "local _YashUltimoToque = 0"),
+		checar(contem(luau, "local _ultimoToque = 0"),
 			"tocar: declara o ultimo toque por evento")
 		checar(contem(luau, "os.clock()"), "tocar: debounce usa os.clock()")
-		checar(contem(luau, "- _YashUltimoToque < 0.4 then return end"),
+		checar(contem(luau, "- _ultimoToque < 0.4 then return end"),
 			"tocar: janela de debounce de 0.4s")
 		checar(not contem(luau, "IsDescendantOf"),
 			"tocar sem sujeito: nenhuma guarda de sujeito")
@@ -400,14 +400,14 @@ fim
 	local luau, erro = gerarLuau(fonte, opcoesDoAlvo("Script"))
 	checar(luau ~= nil, "tocar Cubo: gera Luau", erro)
 	if luau then
-		checar(contem(luau, "_YashAlvo:IsDescendantOf(Cubo) or Cubo:IsDescendantOf(_YashAlvo)"),
+		checar(contem(luau, "_alvo:IsDescendantOf(Cubo) or Cubo:IsDescendantOf(_alvo)"),
 			"tocar Cubo: compara as DUAS direcoes")
-		checar(contem(luau, "_YashPersonagem:IsDescendantOf(Cubo) or Cubo:IsDescendantOf(_YashPersonagem)"),
+		checar(contem(luau, "_personagem:IsDescendantOf(Cubo) or Cubo:IsDescendantOf(_personagem)"),
 			"tocar Cubo: cobre o personagem de quem tocou")
-		checar(contem(luau, "if not _YashDoSujeito then return end"),
+		checar(contem(luau, "if not _doSujeito then return end"),
 			"tocar Cubo: guarda de sujeito presente")
-		local posGuarda = luau:find("_YashDoSujeito", 1, true)
-		local posDebounce = luau:find("- _YashUltimoToque <", 1, true)
+		local posGuarda = luau:find("_doSujeito", 1, true)
+		local posDebounce = luau:find("- _ultimoToque <", 1, true)
 		checar(posGuarda and posDebounce and posGuarda < posDebounce,
 			"tocar Cubo: sujeito ANTES do debounce (nao consome a janela)")
 		local fn, msg = carregarTexto(luau)
@@ -444,7 +444,7 @@ fim
 	local luau2, erro2 = gerarLuau(fonteSujeito, opcoesDoAlvo("Script"))
 	checar(luau2 ~= nil, "encostar com sujeito: gera Luau", erro2)
 	if luau2 then
-		checar(contem(luau2, "_YashDoSujeito"), "encostar com sujeito: guarda presente")
+		checar(contem(luau2, "_doSujeito"), "encostar com sujeito: guarda presente")
 	end
 end
 
@@ -486,7 +486,7 @@ fim
 	local luau, erro = gerarLuau(fonte, opcoesDoAlvo("LocalScript", { "ScreenGui", "Frame" }))
 	checar(luau ~= nil, "tween: gera Luau", erro)
 	if luau then
-		checar(contem(luau, "local _YashTween = TweenService:Create(_YashAlvo"),
+		checar(contem(luau, "TweenService:Create(_alvo, TweenInfo.new(0.5"),
 			"tween: cria via TweenService:Create com alvo")
 		checar(contem(luau, "TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)"),
 			"tween: TweenInfo com duracao pedida e defaults Quad/Out")
@@ -494,8 +494,8 @@ fim
 			"tween: posicao vira goal UDim2")
 		checar(contem(luau, "Rotation = 45,"),
 			"tween: numero solto vira goal numerico")
-		checar(contem(luau, "_YashTween:Play()"),
-			"tween: chama Play()")
+		checar(contem(luau, "}):Play()"),
+			"tween: chama Play() no encadeamento")
 		checar(semVestigios(luau) == nil, "tween: sem vestigios de Runtime")
 		local fn, msg = carregarTexto(luau)
 		checar(type(fn) == "function", "tween: Luau gerado carrega", msg)
@@ -512,11 +512,11 @@ fim
 	local luauFade, erroFade = gerarLuau(fonteFade, opcoesDoAlvo("LocalScript", { "ScreenGui" }))
 	checar(luauFade ~= nil, "fade mostrar: gera Luau", erroFade)
 	if luauFade then
-		checar(contem(luauFade, "_YashAlvo:IsA(\"CanvasGroup\")"),
+		checar(contem(luauFade, "_alvo:IsA(\"CanvasGroup\")"),
 			"fade mostrar: cadeia IsA por classe de GUI")
-		checar(contem(luauFade, "_YashAlvo.Visible = true"),
+		checar(contem(luauFade, "_alvo.Visible = true"),
 			"fade mostrar: torna visivel antes do fade")
-		checar(contem(luauFade, "_YashG.GroupTransparency = 0"),
+		checar(contem(luauFade, "_metas.GroupTransparency = 0"),
 			"fade mostrar: goal de GroupTransparency para CanvasGroup")
 		checar(not contem(luauFade, "Painel.Visible = true"),
 			"fade mostrar: suprime o bloco base de `mostrar`")
@@ -544,14 +544,14 @@ fim
 	local luauP, erroP = gerarLuau(fontePulsar, opcoesDoAlvo("LocalScript", { "ScreenGui" }))
 	checar(luauP ~= nil, "pulsar/executar: gera Luau", erroP)
 	if luauP then
-		checar(contem(luauP, "local _YashAnim_pulsar")
-			and contem(luauP, "_YashAnim_pulsar = function(inst)"),
+		checar(contem(luauP, "local _anim_pulsar")
+			and contem(luauP, "_anim_pulsar = function(inst)"),
 			"pulsar/executar: animacao criada vira funcao local")
 		checar(contem(luauP, "task.wait(0.25)"),
 			"pulsar/executar: espera duracao+0.05 entre passos")
-		checar(contem(luauP, "task.spawn(function() _YashAnim_pulsar(Botao) end)"),
+		checar(contem(luauP, "task.spawn(function() _anim_pulsar(Botao) end)"),
 			"pulsar/executar: executar animacao chama a funcao em spawn")
-		checar(contem(luauP, "local _YashTamanho = _YashAlvo.Size"),
+		checar(contem(luauP, "local _tamanho = _alvo.Size"),
 			"pulsar: captura tamanho atual para voltar")
 		checar(contem(luauP, "task.delay("),
 			"pulsar: agenda a volta apos metade da duracao")

@@ -895,7 +895,8 @@ fim
 		and exports.PossuiLetra("Yash", "a") == true
 		and exports.PossuiLetra("Yash", "z") == false
 		and exports.ObterResultado() == 10
-		and not string.find(codigo, "local _YashFunc_Somar\n\nlocal _YashFunc_Somar", 1, true)
+		and not (string.find(codigo, "local Somar\n\nlocal Somar", 1, true)
+			or string.find(codigo, "local Somar, Somar", 1, true))
 	if conteudoOk then
 		print("[GEN OK] Função YashScript gera Luau válido com argumentos e retorno")
 	else

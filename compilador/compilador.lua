@@ -93,6 +93,13 @@ local function tokenizar(texto)
 			local ini = i
 			local aspas = c
 			local buf = {}
+			local partes = nil   -- vira lista quando ha interpolacao `{expr}`
+			local function descarregar()
+				if partes and #buf > 0 then
+					table.insert(partes, { lit = table.concat(buf) })
+					buf = {}
+				end
+			end
 			i = i + 1
 			while i <= n do
 				local cc = texto:sub(i, i)
@@ -119,12 +126,49 @@ local function tokenizar(texto)
 					break
 				elseif cc == "\n" then
 					break
+				elseif aspas == '"' and cc == "{" and texto:sub(i + 1, i + 1) == "{" then
+					EMPILHAR(buf, "{"); i = i + 2
+				elseif aspas == '"' and cc == "}" and texto:sub(i + 1, i + 1) == "}" then
+					EMPILHAR(buf, "}"); i = i + 2
+				elseif aspas == '"' and cc == "{" then
+					-- acha o `}` correspondente, respeitando aninhamento e aspas
+					local prof, j = 0, i
+					while j <= n do
+						local cj = texto:sub(j, j)
+						if cj == "\\" then j = j + 2
+						elseif cj == '"' or cj == "'" then
+							local q = cj; j = j + 1
+							while j <= n and texto:sub(j, j) ~= q do
+								if texto:sub(j, j) == "\\" then j = j + 1 end
+								j = j + 1
+							end
+							j = j + 1
+						elseif cj == "{" then prof = prof + 1; j = j + 1
+						elseif cj == "}" then
+							prof = prof - 1
+							if prof == 0 then break end
+							j = j + 1
+						else j = j + 1 end
+					end
+					if j <= n and prof == 0 then
+						partes = partes or {}
+						descarregar()
+						table.insert(partes, { expr = texto:sub(i + 1, j - 1) })
+						i = j + 1
+					else
+						EMPILHAR(buf, cc); i = i + 1
+					end
 				else
 					EMPILHAR(buf, cc)
 					i = i + 1
 				end
 			end
-			EMPILHAR(toks, { t = "string", v = table.concat(buf), l = linha, ini = ini, fim = i - 1 })
+			if partes then
+				descarregar()
+				EMPILHAR(toks, { t = "interp", partes = partes, l = linha, ini = ini, fim = i - 1 })
+			else
+				EMPILHAR(toks, { t = "string", v = table.concat(buf), l = linha, ini = ini, fim = i - 1 })
+			end
 		elseif string.match(c, "%d") then
 			lerNumero(i, nil)
 		elseif string.match(c, "%a") or c == "_" then
@@ -202,6 +246,8 @@ local EVENTOS_CONHECIDOS = {
 	clicar = true,
 	mouse_em = true,
 	mouse_sair = true,
+	apertar_tecla = true,
+	soltar_tecla = true,
 }
 
 -- Eventos em que o proprio sujeito e o alvo.
@@ -336,9 +382,10 @@ local function analisar(fonte, toks)
 		[".."] = 4, ["+"] = 5, ["-"] = 5,
 		["*"] = 6, ["/"] = 6, ["//"] = 6, ["%"] = 6, ["^"] = 7,
 	}
-	local function analisarExpressao(indices)
+	local function analisarExpressao(indices, toksSub)
+		local toksAtivo = toksSub or toks
 		local pos = 1
-		local function tokenAtual() return indices[pos] and toks[indices[pos]] end
+		local function tokenAtual() return indices[pos] and toksAtivo[indices[pos]] end
 		local parseExpressao
 		local function primario()
 			local tk = tokenAtual()
@@ -378,7 +425,7 @@ local function analisar(fonte, toks)
 				while tokenAtual() do
 					local prox = tokenAtual()
 					if prox.t == "simbolo" and prox.v == "." then
-						local nome = indices[pos + 1] and toks[indices[pos + 1]]
+						local nome = indices[pos + 1] and toksAtivo[indices[pos + 1]]
 						if not nome or nome.t ~= "palavra" then return nil end
 						pos = pos + 2
 						if expr.k == "ident" then
@@ -399,9 +446,9 @@ local function analisar(fonte, toks)
 						if not args then return nil end
 						expr = { k = "chamada", alvo = expr, args = args }
 					elseif prox.t == "simbolo" and prox.v == ":" then
-						local metodo = indices[pos + 1] and toks[indices[pos + 1]]
+						local metodo = indices[pos + 1] and toksAtivo[indices[pos + 1]]
 						if not metodo or metodo.t ~= "palavra" or not indices[pos + 2]
-							or toks[indices[pos + 2]].v ~= "(" then return nil end
+							or toksAtivo[indices[pos + 2]].v ~= "(" then return nil end
 						pos = pos + 2
 						local args = lerArgumentos(")")
 						if not args then return nil end
@@ -416,6 +463,22 @@ local function analisar(fonte, toks)
 			local expr
 			if tk.t == "numero" then pos = pos + 1; expr = { k = "num", v = tk.v }
 			elseif tk.t == "string" then pos = pos + 1; expr = { k = "str", v = tk.v }
+			elseif tk.t == "interp" then
+				pos = pos + 1
+				local partes = {}
+				for _, p in ipairs(tk.partes) do
+					if p.lit then
+						table.insert(partes, { lit = p.lit })
+					else
+						local sub = tokenizar(p.expr)
+						local subIdx = {}
+						for si = 1, #sub do subIdx[si] = si end
+						local e = analisarExpressao(subIdx, sub)
+						if not e then return nil end
+						table.insert(partes, { expr = e })
+					end
+				end
+				expr = { k = "interp", partes = partes }
 			elseif tk.t == "simbolo" and tk.v == "(" then
 				pos = pos + 1
 				expr = parseExpressao(1)
@@ -436,7 +499,7 @@ local function analisar(fonte, toks)
 						pos = pos + 1
 						valor = parseExpressao(1)
 					elseif (atual.t == "palavra" or atual.t == "string") and indices[pos + 1]
-						and toks[indices[pos + 1]].t == "simbolo" and toks[indices[pos + 1]].v == "=" then
+						and toksAtivo[indices[pos + 1]].t == "simbolo" and toksAtivo[indices[pos + 1]].v == "=" then
 						chave = { k = "str", v = atual.v }
 						pos = pos + 2
 						valor = parseExpressao(1)
@@ -455,7 +518,15 @@ local function analisar(fonte, toks)
 			elseif tk.t == "palavra" then
 				pos = pos + 1
 				local baixo = string.lower(tk.v)
-				if baixo == "verdadeiro" or baixo == "sim" then expr = { k = "bool", v = true }
+				if baixo == "luau" then
+					local crudo = indices[pos] and toksAtivo[indices[pos]]
+					if crudo and crudo.t == "string" then
+						pos = pos + 1
+						expr = { k = "luau", codigo = crudo.v }
+					else
+						expr = { k = "ident", v = tk.v }
+					end
+				elseif baixo == "verdadeiro" or baixo == "sim" then expr = { k = "bool", v = true }
 				elseif baixo == "falso" or baixo == "nao" then expr = { k = "bool", v = false }
 				elseif baixo == "nulo" then expr = { k = "nulo" }
 				else expr = { k = "ident", v = tk.v }
@@ -488,6 +559,9 @@ local function analisar(fonte, toks)
 		if #c == 1 then
 			local tk1 = toks[c[1]]
 			if tk1.t == "string" then return { k = "str", v = tk1.v }
+			elseif tk1.t == "interp" then
+				local e = analisarExpressao(c)
+				if e then return e end
 			elseif tk1.t == "numero" then return { k = "num", v = tk1.v }
 			elseif tk1.t == "palavra" then
 				local l = string.lower(tostring(tk1.v))
@@ -606,6 +680,13 @@ local function analisar(fonte, toks)
 			local r = { t = "anim", efeito = v.efeito }
 			for k, vv in pairs(v.params or {}) do r[k] = valorFinal(vv) end
 			return r
+		elseif v.k == "interp" then
+			local partes = {}
+			for _, p in ipairs(v.partes or {}) do
+				if p.lit then table.insert(partes, { lit = p.lit })
+				else table.insert(partes, { expr = valorFinal(p.expr) }) end
+			end
+			return { t = "interp", partes = partes }
 		end
 		return nil
 	end
@@ -1494,12 +1575,42 @@ local function analisar(fonte, toks)
 			return { tipo = "sortear", nome = nome, min = mn.v, max = mx.v, norm = "sortear " .. nome .. " entre " .. mn.v .. " e " .. mx.v }
 		end
 
-		if a == "tocar" then
+		if a == "tocar" or a == "rodar" or a == "reproduzir" then
+			local subtipo = at()
+			if subtipo and subtipo.t == "palavra" and subtipo.v == "animacao" then
+				avancar()
+				local id = at()
+				if not id or (id.t ~= "numero" and id.t ~= "string") then erroJ("id da animacao esperado") end
+				avancar()
+				return { tipo = "animacao_asset", id = tostring(id.v), norm = "rodar animacao " .. id.v }
+			end
 			espera("palavra", "som")
 			local id = at()
 			if not id or (id.t ~= "numero" and id.t ~= "string") then erroJ("id do som esperado") end
 			avancar()
 			return { tipo = "som", id = tostring(id.v), norm = "tocar som " .. id.v }
+		end
+
+		if a == "parar" or a == "interromper" then
+			espera("palavra", "animacao")
+			return { tipo = "parar_animacao", norm = "parar animacao" }
+		end
+
+		if a == "viajar" then
+			espera("palavra", "para")
+			local id = at()
+			if not id or (id.t ~= "numero" and id.t ~= "string") then erroJ("id do lugar esperado") end
+			avancar()
+			return { tipo = "viajar", id = tostring(id.v), norm = "viajar para " .. id.v }
+		end
+
+		if a == "luau" then
+			local codigo = espera("string")
+			local linhas = {}
+			for linha in string.gmatch(codigo .. "\n", "(.-)\n") do
+				linhas[#linhas + 1] = string.gsub(linha, "\n$", "")
+			end
+			return { tipo = "luau_bruto", linhas = linhas, norm = "luau" }
 		end
 
 		if a == "explodir" then
@@ -1771,9 +1882,15 @@ local function analisar(fonte, toks)
 			local primeira = espera("palavra")
 			-- "quando tocar 'moeda'"        -> forma legada, sem sujeito
 			-- "quando jogador tocar moeda" -> o primeiro nome e o SUJEITO
+			-- "quando apertar tecla 'Espaco'" -> evento de teclado, sem alvo
 			local sujeito = nil
+			local tecla = nil
 			local evt = primeira
-			if not EVENTOS_CONHECIDOS[primeira] then
+			if primeira == "apertar" or primeira == "soltar" then
+				espera("palavra", "tecla")
+				tecla = esperaNome()
+				evt = primeira .. "_tecla"
+			elseif not EVENTOS_CONHECIDOS[primeira] then
 				sujeito = primeira
 				evt = espera("palavra")
 			end
@@ -1781,7 +1898,9 @@ local function analisar(fonte, toks)
 				erroJ("evento desconhecido: '" .. evt .. "'")
 			end
 			local alvo = nil
-			if EMISSOR_PROPRIO[evt] then
+			if evt == "apertar_tecla" or evt == "soltar_tecla" then
+				-- eventos de teclado nao tem alvo na arvore
+			elseif EMISSOR_PROPRIO[evt] then
 				-- "quando Botao clicar": o sujeito ja e o alvo
 				if sujeito then
 					alvo = sujeito
@@ -1798,7 +1917,7 @@ local function analisar(fonte, toks)
 			local corpo = parseComandos({ fim = true })
 			espera("palavra", "fim")
 			if localEvento then table.remove(escoposVariaveis) end
-			EMPILHAR(config.eventos, { tipo = evt, alvo = alvo, sujeito = sujeito, corpo = corpo })
+			EMPILHAR(config.eventos, { tipo = evt, alvo = alvo, sujeito = sujeito, tecla = tecla, corpo = corpo })
 		elseif a == "se" then
 			avancar()
 			local cond = parseCond()
@@ -1837,6 +1956,105 @@ end
 -- EXPANSÃO DE "incluir"
 -----------------------------------------------------------------------
 
+-- Escape de texto em estilo Luau, de forma canonica e independente do host.
+-- Nao usamos string.format("%q"): a saida muda entre Luau e Lua 5.3 e pode
+-- gerar codigo invalido (ex.: \n virava barra + quebra de linha real).
+local function escaparTexto(s)
+	local fmt = string.format
+	s = tostring(s)
+	s = s:gsub("\\", "\\\\")
+	s = s:gsub("\"", "\\\"")
+	s = s:gsub("\n", "\\n")
+	s = s:gsub("\r", "\\r")
+	s = s:gsub("\t", "\\t")
+	s = s:gsub("[%z\1-\31\127]", function(c)
+		return fmt("\\%03d", string.byte(c))
+	end)
+	return "\"" .. s .. "\""
+end
+
+local function colapsarLuauBlocos(fonte)
+	local saida = {}
+	local i = 1
+	local len = string.len(fonte)
+	while i <= len do
+		local c = string.byte(fonte, i)
+		if c == 108 or c == 76 then
+			local s4 = string.sub(fonte, i, i + 3)
+			if string.lower(s4) == "luau" then
+				local j = i + 4
+				while j <= len do
+					local b = string.byte(fonte, j)
+					if b == 32 or b == 9 then
+						j = j + 1
+					else
+						break
+					end
+				end
+				local k = j
+				while k <= len do
+					local bk = string.byte(fonte, k)
+					if bk == 10 or bk == 13 then
+						break
+					end
+					k = k + 1
+				end
+				local primeira = string.sub(fonte, j, k - 1)
+				if string.match(primeira, '^"') and string.match(primeira, '"$') then
+					table.insert(saida, string.sub(fonte, i, k))
+					if string.byte(fonte, k) == 13 then k = k + 1 end
+					if k <= len and string.byte(fonte, k) == 10 then k = k + 1 end
+					i = k
+				else
+					local blocoLinhas = {}
+					local bkChar = k <= len and string.byte(fonte, k) or nil
+					while true do
+						table.insert(blocoLinhas, primeira)
+						if bkChar == 13 then k = k + 1 end
+						if bkChar == 10 then k = k + 1 end
+						if k > len then break end
+						local m = k
+						local linhaAtual = ""
+						while m <= len do
+							local bb = string.byte(fonte, m)
+							if bb == 10 or bb == 13 then break end
+							linhaAtual = linhaAtual .. string.char(bb)
+							m = m + 1
+						end
+						local bkNovo = m <= len and string.byte(fonte, m) or nil
+						local trim = linhaAtual:gsub("^%s+", ""):gsub("%s+$", "")
+						if trim == "fim" then
+							k = m
+							break
+						end
+						primeira = linhaAtual
+						bkChar = bkNovo
+						k = m
+					end
+					local texto = table.concat(blocoLinhas, "\n")
+					table.insert(saida, "luau " .. escaparTexto(texto))
+					if k <= len and string.byte(fonte, k) == 10 then
+						if bkChar == 13 then k = k + 1 end
+						k = k + 1
+					elseif k <= len and string.byte(fonte, k) == 13 then
+						k = k + 1
+						if k <= len and string.byte(fonte, k) == 10 then k = k + 1 end
+					else
+						if bkChar == 13 and k <= len and string.byte(fonte, k) == 10 then k = k + 1 end
+						if bkChar == 10 then k = k + 1 end
+					end
+					i = k
+				end
+			end
+		end
+		if i <= len then
+			table.insert(saida, string.sub(fonte, i, i))
+			i = i + 1
+		end
+	end
+	return table.concat(saida)
+end
+
 local function expandirIncluir(fonte, arquivos, pilha)
 	pilha = pilha or {}
 	local saida = {}
@@ -1853,7 +2071,6 @@ local function expandirIncluir(fonte, arquivos, pilha)
 				pilha[nome] = nil
 				EMPILHAR(saida, exp)
 			else
-				-- mantém a linha original; o consumidor (plugin/host) decide o que fazer
 				EMPILHAR(saida, linha)
 			end
 		else
@@ -1866,24 +2083,6 @@ end
 -----------------------------------------------------------------------
 -- API PÚBLICA
 -----------------------------------------------------------------------
-
-function Compilador.Compilar(fonte, arquivos)
-	arquivos = arquivos or {}
-	fonte = string.gsub(fonte or "", "\r\n", "\n")
-	local ok, ret = pcall(function()
-		local expandida = expandirIncluir(fonte, arquivos, {})
-		local toks = tokenizar(expandida)
-		if #toks == 0 then return novaConfig() end
-		return analisar(expandida, toks)
-	end)
-	if ok then
-		return true, ret
-	end
-	if type(ret) ~= "table" then
-		return false, { erro = "[interno] " .. tostring(ret), linha = 0 }
-	end
-	return false, { erro = ret.erro or "erro desconhecido", linha = ret.linha or 0 }
-end
 
 -----------------------------------------------------------------------
 -- SERIALIZAÇÃO (LEGADA — arquitetura _YashConfig)
@@ -1899,22 +2098,6 @@ local RESERVADAS = {
 	["or"] = true, ["repeat"] = true, ["return"] = true, ["then"] = true,
 	["true"] = true, ["until"] = true, ["while"] = true,
 }
-
--- Escape de texto em estilo Luau, de forma canonica e independente do host.
--- Nao usamos string.format("%q"): a saida muda entre Luau e Lua 5.3 e pode
--- gerar codigo invalido (ex.: \n virava barra + quebra de linha real).
-local function escaparTexto(s)
-	s = tostring(s)
-	s = s:gsub("\\", "\\\\")
-	s = s:gsub("\"", "\\\"")
-	s = s:gsub("\n", "\\n")
-	s = s:gsub("\r", "\\r")
-	s = s:gsub("\t", "\\t")
-	s = s:gsub("[%z\1-\31\127]", function(c)
-		return string.format("\\%03d", string.byte(c))
-	end)
-	return "\"" .. s .. "\""
-end
 
 local function chaveValida(k)
 	return type(k) == "string"
@@ -2005,7 +2188,9 @@ end
 local function textoValor(v)
 	if type(v) == "number" then return tostring(v) end
 	if type(v) == "boolean" then return v and "verdadeiro" or "falso" end
-	if type(v) == "string" then return escaparTexto(v) end
+	if type(v) == "string" then
+		return (escaparTexto(v):gsub("{", "{{"):gsub("}", "}}"))
+	end
 	if type(v) == "table" then
 		if v.t == "cor" then
 			return string.format("rgb(%d,%d,%d)", v.r or 0, v.g or 0, v.b or 0)
@@ -2023,6 +2208,18 @@ local function textoValor(v)
 				end
 			end
 			return table.concat(cl, " + ")
+		elseif v.t == "interp" then
+			local out = {}
+			for _, p in ipairs(v.partes or {}) do
+				if p.lit then
+					local s = p.lit:gsub("\\", "\\\\"):gsub('"', '\\"')
+						:gsub("{", "{{"):gsub("}", "}}")
+					table.insert(out, s)
+				else
+					table.insert(out, "{" .. textoValor(p.expr) .. "}")
+				end
+			end
+			return '"' .. table.concat(out) .. '"'
 		end
 	end
 	return tostring(v)
@@ -2032,9 +2229,25 @@ end
 local function textoExpr(e)
 	if not e then return "" end
 	if e.k == "num" then return tostring(e.v) end
-	if e.k == "str" then return escaparTexto(e.v) end
+	if e.k == "str" then
+		return (escaparTexto(e.v):gsub("{", "{{"):gsub("}", "}}"))
+	end
+	if e.k == "interp" then
+		local out = {}
+		for _, p in ipairs(e.partes or {}) do
+			if p.lit then
+				local s = p.lit:gsub("\\", "\\\\"):gsub('"', '\\"')
+					:gsub("{", "{{"):gsub("}", "}}")
+				table.insert(out, s)
+			else
+				table.insert(out, "{" .. textoExpr(p.expr) .. "}")
+			end
+		end
+		return '"' .. table.concat(out) .. '"'
+	end
 	if e.k == "bool" then return e.v and "verdadeiro" or "falso" end
 	if e.k == "nulo" then return "nulo" end
+	if e.k == "luau" then return "luau " .. escaparTexto(tostring(e.codigo)) end
 	if e.k == "ident" then return tostring(e.v) end
 	if e.k == "caminho" then return table.concat(e.partes, ".") end
 	if e.k == "unario" then return tostring(e.op) .. textoExpr(e.valor) end
@@ -2138,7 +2351,16 @@ end
 
 local function empilharComandos(corpo, recuo, linhas)
 	for _, cmd in ipairs(corpo or {}) do
-		if cmd.tipo == "log" then
+		if cmd.tipo == "luau_bruto" then
+			local texto = table.concat(cmd.linhas or {}, "\n")
+			table.insert(linhas, recuo .. "luau " .. escaparTexto(texto))
+		elseif cmd.tipo == "viajar" then
+			table.insert(linhas, recuo .. "viajar para " .. tostring(cmd.id))
+		elseif cmd.tipo == "animacao_asset" then
+			table.insert(linhas, recuo .. "rodar animacao " .. tostring(cmd.id))
+		elseif cmd.tipo == "parar_animacao" then
+			table.insert(linhas, recuo .. "parar animacao")
+		elseif cmd.tipo == "log" then
 			if cmd.args then
 				local args = {}
 				for _, arg in ipairs(cmd.args) do table.insert(args, textoExpr(arg)) end
@@ -2384,6 +2606,9 @@ function Compilador.Descompilar(config)
 			if ev.alvo then cab = cab .. " '" .. ev.alvo .. "'" end
 		elseif ev.tipo == "carregar" or ev.tipo == "iniciar" then
 			cab = "quando " .. ev.tipo
+		elseif ev.tipo == "apertar_tecla" or ev.tipo == "soltar_tecla" then
+			local verbo = (ev.tipo == "apertar_tecla") and "apertar" or "soltar"
+			cab = "quando " .. verbo .. " tecla " .. escaparTexto(ev.tecla)
 		else
 			cab = "quando " .. ev.tipo .. " '" .. ev.alvo .. "'"
 		end
@@ -2437,6 +2662,20 @@ function Compilador.Tokenizar(fonte)
 	local ok, ret = pcall(tokenizar, string.gsub(fonte or "", "\r\n", "\n"))
 	if ok then return true, ret end
 	return false, { erro = ret.erro or "erro", linha = ret.linha or 0 }
+end
+
+function Compilador.Compilar(fonte, arquivos)
+	arquivos = arquivos or {}
+	fonte = string.gsub(fonte or "", "\r\n", "\n")
+	local colapsada = colapsarLuauBlocos(fonte)
+	local expandida = expandirIncluir(colapsada, arquivos, {})
+	local ok, resultado = pcall(function()
+		local toks = tokenizar(expandida)
+		if #toks == 0 then return novaConfig() end
+		return analisar(expandida, toks)
+	end)
+	if ok then return true, resultado end
+	return false, resultado
 end
 
 return Compilador

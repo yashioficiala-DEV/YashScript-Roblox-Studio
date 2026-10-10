@@ -43,15 +43,25 @@ O plugin infere o contexto pela classe do alvo:
   barra, `\n` quebra de linha, `\r` retorno de carro, `\t` tabulação e
   `\ddd` em decimal (3 dígitos, ex.: `\009`). Texto com acentos funciona
   direto em UTF-8: `variavel A = "ação coração"`.
+- Interpolação: dentro de texto entre aspas duplas, `{expressão}` insere o valor
+  da expressão no texto e vira uma string com crase do Luau. `{{` e `}}`
+  produzem uma chave literal. Sem `{}`, o texto continua sendo uma string
+  normal.
+      print("Oi {nome}, vida {jogador.vida}")   -> print(`Oi {nome}, vida {humanoideLocal.Health}`)
+      print("chaves {{literais}}")              -> print("chaves {literais}")
 - usar "Alias" = caminho declara referências ao DataModel ou serviços Roblox.
   Propriedades conhecidas em português são mapeadas para propriedades Roblox,
   incluindo vida/vida_maxima, velocidade, posição, tamanho, cor, visível,
   habilitado, ancorado e colisão.
 - `variavel`, `var` e `let` declaram estado do script. Atribuições aceitam
   expressões com `+`, `-`, `*`, `/`, `//`, `%`, `^`, `..`, comparações e lógica.
-- `workspace.CurrentCamera` funciona como alias no cliente; `CameraType` aceita
-  `Scriptable`, `Custom`, `Attach`, `Track` e `Watch`. Atribuir
+- `workspace.CurrentCamera` funciona como alias no cliente. `CameraType` aceita
+  `Scriptable`, `Custom`, `Attach`, `Track` e `Watch`, além dos aliases
+  `fixed`/`fixa`/`fixo`, `follow`/`seguir`, `orbit`/`orbital`/`orbitar`. Atribuir
   `Camera.CFrame = CameraPart.CFrame` fixa a câmera na pose de uma peça.
+- Propriedades Enum aceitam o nome como texto: `Cubo.Material = "Neon"`,
+  `Texto.Font = "GothamBold"`. Materiais e fontes são aceitos em português ou
+  inglês (ex.: `"neon"`, `"vidro"`, `"gotham_bold"`).
 
 3. CONDIÇÕES E FLUXO
 
@@ -72,12 +82,20 @@ Eventos comuns incluem iniciar, carregar, clicar, mouse_em, mouse_sair,
 tocar e encostar. Eventos Touched aceitam sujeito lógico (jogador ou player) ou
 objeto; handlers são conectados diretamente aos eventos Roblox.
 
-`jogador` não é uma referência implícita ao Player. Ele só tem efeito como
-sujeito lógico de `quando jogador tocar <objeto>`, e nesse caso o corpo do
-handler recebe `_YashPersonagem`, que é o Model do personagem que encostou, e
-não o Player. Para usar o nome `jogador` em qualquer outra posição (condição,
-comando, HUD, tabela), declare-o antes com `usar "jogador" = ...` ou
-`criar objeto 'jogador'`; sem isso a geração falha com "não é um alias declarado".
+Eventos de teclado: `quando apertar tecla "Espaco"` e `quando soltar tecla "E"`
+conectam `UserInputService.InputBegan`/`InputEnded` e filtram por
+`Enum.KeyCode.<tecla>`. A tecla pode ser escrita pelo nome em português ou
+inglês (Espaco/Space, Setas/Up, `E`, `Enter`/`Return`, ...).
+
+`jogador` é a referência implícita ao Player. Em contexto de cliente,
+`jogador.velocidade`, `jogador.pulo`, `jogador.vida` e as demais propriedades de
+humanoid viram `Players.LocalPlayer` seguido do Humanoid, por exemplo
+`jogador.velocidade = 20` gera `humanoideLocal.WalkSpeed = 20`. Em Script de
+servidor (e em contexto comum), a mesma escrita percorre todos os jogadores:
+emite um laço sobre `Players:GetPlayers()` e aplica a propriedade ao Humanoid de
+cada personagem. `jogador` continua sendo sujeito lógico de
+`quando jogador tocar <objeto>`, caso em que o corpo recebe `_YashPersonagem`,
+que é o Model do personagem que encostou, e não o Player.
 
 Chamadas de método aceitam argumentos posicionais simples e são emitidas como
 chamadas de método Luau. Funcionam como instrução avulsa em qualquer posição:
@@ -237,14 +255,14 @@ Verificadas contra o gerador V8 atual:
 - Cores: apenas `rgb(r, g, b)` é seguro. `preto`/`branco` (e `black`/`white`)
   valem somente para `cor`, `cor_texto`, `cor_borda` e `fundo`. Outros nomes de
   cor não são traduzidos: viram string inválida ou são descartados em silêncio.
-- `Players.LocalPlayer` é resolvido como se fosse uma Instance filha e gera
-  `Players:WaitForChild("LocalPlayer")`, o que está errado: `LocalPlayer` é uma
-  propriedade do serviço Players, não um filho. Não existe alias pronto para o
-  jogador local, e o nome solto `LocalPlayer` também não é resolvido.
-- `jogador` só é sujeito lógico em `quando jogador tocar`. Em qualquer outra
-  posição é um nome comum e precisa ser declarado com `usar` ou `criar objeto`.
-- Valores de retorno de método (por exemplo `T:find("b")`, que devolve dois
-  resultados) não são suportados.
+- `Players.LocalPlayer` é resolvido como propriedade do serviço (`Players.LocalPlayer`).
+  Para o jogador local prefira `jogador` (que também cuida do Humanoid no cliente).
+- `jogador` resolve para o Player local no cliente (via `Players.LocalPlayer` e
+  Humanoid) e percorre todos os jogadores no servidor/comum ao ler/escrever
+  propriedades de humanoid. Também é sujeito lógico em `quando jogador tocar`.
+- Chamadas de método podem aparecer como valor:
+  `variavel p = Casa:FindFirstChild("Porta")`. Quando o método devolve vários
+  resultados, vale o primeiro.
 - `incluir "arquivo.yash"` só funciona quando o host entrega o conteúdo do
   arquivo ao compilador; o plugin do Studio não lê arquivos do disco.
 - Propriedades HTML/CSS sem equivalente no Roblox foram removidas em vez de

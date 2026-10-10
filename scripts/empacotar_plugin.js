@@ -20,9 +20,11 @@ const gerador = ler("compilador/gerador.lua");
 const modelo = ler("plugin/_modelo_plugin.lua");
 
 // V8.0: o modelo inclui apenas Compilador + Gerador, sem runtime interpretado.
-let saida = modelo
-  .replace("@@COMPILADOR@@", luaString(compilador))
-  .replace("@@GERADOR@@", luaString(gerador));
+// Substituição em uma única passada para evitar que o conteúdo inserido
+// contenha placeholders que seriam substituídos novamente.
+let saida = modelo.replace(/@@(COMPILADOR|GERADOR)@@/g, function(_, nome) {
+  return nome === "COMPILADOR" ? luaString(compilador) : luaString(gerador);
+});
 
 const sobrando = saida.match(/@@[A-Z_]+@@/g);
 if (sobrando) {

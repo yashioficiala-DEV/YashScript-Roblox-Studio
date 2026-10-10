@@ -89,9 +89,11 @@ local FUNCOES_LUAU = {
 
 -- Onde cada servico realmente esta quando o codigo roda no CLIENTE.
 -- `StarterGui` e `PlayerGui` nao sao o mesmo objeto em runtime, entao o
--- gerador traduz em vez de indexar direto.
+-- Servicos que, em cliente, nao podem ser acessados pelo mesmo caminho do
+-- servidor (StarterGui muda de lugar em runtime). Usado apenas como teste de
+-- existencia; o codigo real e montado com servico("Players") em resolverCaminho.
 local SERVICOS_CLIENTE = {
-	startergui = 'Players.LocalPlayer:WaitForChild("PlayerGui")',
+	startergui = true,
 }
 
 -- Propriedades YashScript -> propriedade real do Roblox.
@@ -106,11 +108,17 @@ local PROPRIEDADES = {
 	maxhealth = "MaxHealth",
 	velocidade = "WalkSpeed",
 	walkspeed = "WalkSpeed",
+	pulo = "JumpPower",
 	jumppower = "JumpPower",
+	altura_pulo = "JumpHeight",
+	jumpheight = "JumpHeight",
+	jumppower_ativo = "UseJumpPower",
 	position = "Position",
 	size = "Size",
 	cframe = "CFrame",
 	currentcamera = "CurrentCamera",
+	cameratype = "CameraType",
+	camera_type = "CameraType",
 	name = "Name",
 	parent = "Parent",
 	transparency = "Transparency",
@@ -156,6 +164,12 @@ local PROPRIEDADES = {
 	tamanho_absoluto = "AbsoluteSize",
 }
 
+-- Propriedades de humanoid afetadas por `jogador.<prop>` no servidor.
+local PROPRIEDADES_HUMANOIDE = {
+	WalkSpeed = true, JumpPower = true, JumpHeight = true,
+	Health = true, MaxHealth = true, UseJumpPower = true,
+}
+
 -- Propriedades que recebem UDim2 quando o valor e uma tupla (x, y[, z]).
 -- Qualquer outra tupla vira Vector3.new.
 local PROPS_UDIM2 = {
@@ -195,7 +209,73 @@ local SUJEITOS_LOGICOS = {
 	player = true,
 }
 
+-- Nomes amigaveis de teclas (pt-BR / ingles) para Enum.KeyCode. A busca e
+-- case-insensitive; nomes nao listados sao usados como nome cru de KeyCode.
+local TECLAS = {
+	espaco = "Space", ["espaço"] = "Space", space = "Space",
+	enter = "Return", ["return"] = "Return", entrar = "Return",
+	tab = "Tab", esc = "Escape", escape = "Escape",
+	backspace = "Backspace", apagar = "Backspace",
+	shift = "LeftShift", leftshift = "LeftShift",
+	ctrl = "LeftControl", control = "LeftControl", leftcontrol = "LeftControl",
+	alt = "LeftAlt", leftalt = "LeftAlt",
+	cima = "Up", up = "Up", seta_cima = "Up", setacima = "Up",
+	baixo = "Down", down = "Down", seta_baixo = "Down", setabaixo = "Down",
+	esquerda = "Left", left = "Left", seta_esquerda = "Left", setaesquerda = "Left",
+	direita = "Right", right = "Right", seta_direita = "Right", setadireita = "Right",
+	zero = "Zero", um = "One", dois = "Two", tres = "Three", ["três"] = "Three",
+	quatro = "Four", cinco = "Five", seis = "Six", sete = "Seven", oito = "Eight", nove = "Nine",
+}
+
 local DEBOUNCE_TOQUE = 0.4
+
+-- resolve o nome amigavel de uma tecla para o nome do membro Enum.KeyCode
+local function codigoTecla(nome)
+	if not nome then return nil end
+	local chave = string.lower(nome)
+	if TECLAS[chave] then return TECLAS[chave] end
+	if #nome == 1 and string.match(nome, "%a") then return string.upper(nome) end
+	return nome
+end
+
+-- nomes amigaveis (pt-BR / ingles) de material -> Enum.Material
+local MATERIAIS_PT = {
+	grama = "Grass", concreto = "Concrete", cimento = "Concrete",
+	madeira = "Wood", metal = "Metal", vidro = "Glass", plastico = "Plastic",
+	areia = "Sand", agua = "Water", pedra = "Slate", ardosia = "Slate",
+	gelo = "Ice", neve = "Snow", gelo_eterno = "Glacier", geleira = "Glacier",
+	terra = "Ground", chao = "Ground", lama = "Mud", tijolo = "Brick",
+	asfalto = "Asphalt", marmore = "Marble", granito = "Granite",
+	basalto = "Basalt", arenito = "Sandstone", calcario = "Limestone",
+	rocha = "Rock", pedregulho = "Pebble", ["calçada"] = "Pavement", calcada = "Pavement",
+	folhagem = "LeafyGrass", sal = "Salt", pavimento = "Pavement",
+	neon = "Neon", forca = "ForceField", tecido = "Fabric",
+	carpete = "Carpet", tapete = "Carpet", couro = "Leather",
+	borracha = "Rubber", gesso = "Plaster", papelao = "Cardboard",
+	azulejo = "CeramicTiles", telha = "ClayRoofTiles", telha_ceramica = "ClayRoofTiles",
+	lava = "CrackedLava", metal_corrompido = "CorrodedMetal", chapa = "DiamondPlate",
+}
+
+-- nomes amigaveis (pt-BR / ingles) de fonte -> Enum.Font
+local FONTES_PT = {
+	arial = "Arial", arial_bold = "ArialBold", ["arialbold"] = "ArialBold",
+	gothic = "Gotham", gotham = "Gotham", negrito = "GothamBold",
+	gotham_bold = "GothamBold", gotham_medium = "GothamMedium",
+	gotham_black = "GothamBlack",
+	code = "Code", codigo = "Code", mono = "RobotoMono",
+	cartoony = "Cartoon", cartoon = "Cartoon", comico = "Cartoon",
+	sci_fi = "SciFi", scifi = "SciFi", futurista = "SciFi",
+	fantasy = "Fantasy", fantasia = "Fantasy",
+	arcade = "Arcade", rodovia = "Highway", highway = "Highway",
+	antiga = "Antique", antique = "Antique", medieval = "Antique",
+	punk = "Creepster", terror = "Creepster", creepster = "Creepster",
+	fonte_script = "IndieFlower", script = "IndieFlower",
+	roboto = "Roboto", merriweather = "Merriweather", oswald = "Oswald",
+	nunito = "Nunito", patrick_hand = "PatrickHand", ubuntu = "Ubuntu",
+	josefin = "JosefinSans", kalam = "Kalam", bangers = "Bangers",
+	permanent_marker = "PermanentMarker", special_elite = "SpecialElite",
+	fredoka = "FredokaOne", luckiest = "LuckiestGuy",
+}
 
 -- Efeitos de animacao reconhecidos e seus sinonimos. O valor canonico e a
 -- chave dos emissores de efeito (fade in, fade out, slide left, ...).
@@ -363,31 +443,99 @@ local function GerarLuau(programa, opcoes)
 	local aliases = {}         -- nome YashScript -> nome Luau
 	local objetosDados = {}     -- objetos lógicos declarados com `criar objeto`
 	local LOCAIS_GERADOS = {   -- locais criadas pelo proprio gerador
-		_alvo = true,
-		_raiz = true,
-		_personagem = true,
-		_ultimoToque = true,
-		_agora = true,
-		_doSujeito = true,
-		_vis = true,
-		_tween = true,
-		_metas = true,
-		_pos = true,
-		_tamanho = true,
-		_metade = true,
-		_humanoide = true,
-		_alvoVida = true,
-		_player = true,
-		_personagemAlvo = true,
-		_pivotInicial = true,
-		_explosao = true,
-		_som = true,
-		_acao = true,
-		_acaoAlvo = true,
-		_tela = true,
-		_frameRaiz = true,
+		alvo = true,
+		raiz = true,
+		personagem = true,
+		ultimoToque = true,
+		agora = true,
+		doSujeito = true,
+		vis = true,
+		metas = true,
+		tamanho = true,
+		humanoide = true,
+		player = true,
+		personagemAlvo = true,
+		explosao = true,
+		som = true,
+		acaoAlvo = true,
+		alvoVida = true,
+		tela = true,
+		frameRaiz = true,
+		cenaAtual = true,
+		instancia = true,
+		mostrarCena = true,
+		jogador = true,
+		gui = true,
+		tabela = true,
+		indice = true,
+		quem = true,
+		copia = true,
+		instanciaClonada = true,
+		inicio = true,
+		destino = true,
+		inicioTempo = true,
+		alpha = true,
+		parte = true,
+		criarHud = true,
+		telaJogador = true,
 	}
 	local usadoRaiz = false    -- precisa da local do ScreenGui
+	local locaisAuxiliares = {}
+	local jogadorSetup = nil   -- locais do jogador local (usadas por `jogador.*`)
+
+	-- nomes declarados pelo usuario (aliases, variaveis, parametros e lacos):
+	-- a geracao nunca reutiliza esses nomes para locais temporarias.
+	local nomesUsuario = {}
+
+	-- se o nome esta livre, usa; senao sufixa com _2, _3, ... (sufixo nunca
+	-- colide com o usuario porque nomesUsuario ja tem todos os declarados).
+	local function reservar(nome)
+		if not nomesUsuario[nome] then return nome end
+		local i = 2
+		while nomesUsuario[nome .. "_" .. i] do i = i + 1 end
+		return nome .. "_" .. i
+	end
+
+	-- refs com parenteses pedem uma local auxiliar; refs simples podem
+	-- aparecer varias vezes na mesma linha sem temporaria.
+	local function refSimples(ref)
+		return not string.find(ref, "[()]")
+	end
+
+	-- pre-pass: mapeia todo nome que o usuario pode declarar, para que as
+	-- locais geradas (reservar) nunca sombrem uma variavel/parametro/laco deles.
+	local function coletarNomesUsuario(programa)
+		local function corpoNomes(corpo)
+			for _, cmd in ipairs(corpo or {}) do
+				if cmd.tipo == "variavel" or cmd.tipo == "sortear" then
+					nomesUsuario[cmd.nome] = true
+				end
+				if cmd.tipo == "clonar" and cmd.nome then nomesUsuario[cmd.nome] = true end
+				if cmd.nome and (cmd.tipo == "para" or cmd.tipo == "para_cada") then
+					nomesUsuario[cmd.nome] = true
+				end
+				for _, n in ipairs(cmd.nomes or {}) do nomesUsuario[n] = true end
+				if cmd.corpo then corpoNomes(cmd.corpo) end
+				if cmd.senao then corpoNomes(cmd.senao) end
+				for _, alt in ipairs(cmd.alternativas or {}) do corpoNomes(alt.corpo) end
+			end
+		end
+		for _, alias in ipairs(programa.aliases or {}) do
+			nomesUsuario[alias.nome] = true
+		end
+		for nome, def in pairs(programa.funcoes or {}) do
+			nomesUsuario[nome] = true
+			for _, p in ipairs(def.parametros or {}) do nomesUsuario[p] = true end
+			corpoNomes(def.corpo)
+		end
+		for _, acao in pairs(programa.acoes or {}) do corpoNomes(acao) end
+		corpoNomes(programa.comandos)
+		for _, ev in ipairs(programa.eventos or {}) do corpoNomes(ev.corpo) end
+		for _, ev in ipairs(programa.continuos or {}) do corpoNomes(ev.corpo) end
+		for _, ev in ipairs(programa.loops or {}) do corpoNomes(ev.corpo) end
+		for _, tmr in ipairs(programa.timers or {}) do corpoNomes(tmr.corpo) end
+	end
+	coletarNomesUsuario(programa)
 
 	local function buffer() return pilha[#pilha].linhas end
 	local function nivel() return pilha[#pilha].nivel end
@@ -414,9 +562,23 @@ local function GerarLuau(programa, opcoes)
 
 	-- garante uma local para o servico e devolve o nome dela
 	local function servico(nomeCanonico)
-		if servicosUsados[nomeCanonico] then return servicosUsados[nomeCanonico] end
-		servicosUsados[nomeCanonico] = nomeCanonico
-		return nomeCanonico
+		if not servicosUsados[nomeCanonico] then
+			servicosUsados[nomeCanonico] = reservar(nomeCanonico)
+		end
+		return servicosUsados[nomeCanonico]
+	end
+
+	-- garante as locais do jogador local e devolve o nome do humanoide.
+	-- Usado por `jogador.velocidade` / `jogador.pulo` / `jogador.vida` no cliente.
+	local function usarJogadorLocal()
+		if jogadorSetup then return jogadorSetup.humanoide end
+		jogadorSetup = {
+			jogador = reservar("jogadorLocal"),
+			personagem = reservar("personagemLocal"),
+			humanoide = reservar("humanoideLocal"),
+			players = servico("Players"),
+		}
+		return jogadorSetup.humanoide
 	end
 
 	-----------------------------------------------------------------------
@@ -453,6 +615,13 @@ local function GerarLuau(programa, opcoes)
 			return codigo
 		end
 
+		-- 1b) `jogador` (cliente): humanoide do jogador local. Só vale quando o
+		-- nome está sozinho: `jogador.vida`, `jogador.velocidade` (a propriedade
+		-- final já foi separada em gerarValor/resolverBase).
+		if #partes == 1 and (baixo == "jogador" or baixo == "player") and contexto == "cliente" then
+			return usarJogadorLocal()
+		end
+
 		-- 2) `game`
 		if baixo == "game" then
 			return navegar("game", partes, 2)
@@ -472,24 +641,30 @@ local function GerarLuau(programa, opcoes)
 				if ancestraGui and ancestraGui[1] and #partes >= 2
 					and partes[2] == ancestraGui[1] then
 					usadoRaiz = true
-					return navegar("_raiz", partes, 3)
+					return navegar(reservar("raiz"), partes, 3)
 				end
 				-- senao: PlayerGui
 				servico("Players")
-				return navegar(SERVICOS_CLIENTE[baixo], partes, 2)
+				return navegar(servico("Players") .. '.LocalPlayer:WaitForChild("PlayerGui")', partes, 2)
 			end
 
 			-- demais contextos: acesso pelo servico real
-			return navegar(servico(canonico), partes, 2)
+			local baseServico = servico(canonico)
+			-- LocalPlayer e propriedade do servico Players, nao filho.
+			if canonico == "Players" and partes[2]
+				and string.lower(partes[2]) == "localplayer" then
+				return navegar(baseServico .. ".LocalPlayer", partes, 3)
+			end
+			return navegar(baseServico, partes, 2)
 		end
 
 		-- 4) nome da propria arvore do GUI (cliente dentro de um ScreenGui):
-		--    `Jogar` vira _raiz:WaitForChild(...) sem precisar de `usar`.
+		--    `Jogar` vira raiz:WaitForChild(...) sem precisar de `usar`.
 		--    Se o nome for um dos ancestrais do script, parte dele; senao,
 		--    procura como filho de script.Parent (o ultimo nome do ancestral).
 		if ancestraGui and #ancestraGui > 0 and not semArvoreGui then
 			usadoRaiz = true
-			local codigo = "_raiz"
+			local codigo = reservar("raiz")
 			local corte = nil
 			for i = 1, #ancestraGui do
 				if ancestraGui[i] == primeiro then
@@ -542,6 +717,7 @@ local function GerarLuau(programa, opcoes)
 		end
 		if nome then
 			if aliases[nome] then return aliases[nome] end
+			if (nome == "jogador" or nome == "player") and contexto == "cliente" then return usarJogadorLocal() end
 			if LOCAIS_GERADOS[nome] then return nome end
 		end
 		if v.k == "ident" then return resolverCaminho({ v.v }, semArvoreGui) end
@@ -565,13 +741,36 @@ local function GerarLuau(programa, opcoes)
 			elseif op == "ou" then op = "or" end
 			return "(" .. esquerda .. " " .. op .. " " .. direita .. ")"
 		end
-		if k == "unario" then
-			local valor, err = gerarValor(v.valor, propYash)
-			if not valor then return nil, err end
-			return "(" .. v.op .. " " .. valor .. ")"
+		if k == "luau" then
+			if not v.codigo then return nil, "codigo luau ausente" end
+			return tostring(v.codigo)
+		end
+		if k == "interp" then
+			local out = {}
+			for _, p in ipairs(v.partes or {}) do
+				if p.lit then
+					local s = p.lit:gsub("\\", "\\\\"):gsub("`", "\\`")
+						:gsub("{", "\\{"):gsub("}", "\\}")
+					table.insert(out, s)
+				else
+					local e, err = gerarValor(p.expr)
+					if not e then return nil, err end
+					table.insert(out, "{" .. e .. "}")
+				end
+			end
+			return "`" .. table.concat(out) .. "`"
 		end
 		if k == "num" then return numeroLua(v.v) end
-		if k == "str" then return textoLua(v.v) end
+		if k == "str" then
+			local lp = string.lower(propYash or "")
+			if lp == "material" then
+				return "Enum.Material." .. (MATERIAIS_PT[string.lower(v.v)] or v.v)
+			end
+			if lp == "fonte" then
+				return "Enum.Font." .. (FONTES_PT[string.lower(v.v)] or v.v)
+			end
+			return textoLua(v.v)
+		end
 		if k == "bool" then return tostring(v.v) end
 		if k == "nulo" then return "nil" end
 		if k == "par" then return gerarTupla(v, propYash) end
@@ -799,9 +998,9 @@ local function GerarLuau(programa, opcoes)
 		return gs
 	end
 
-	-- emite Create + Play de um tween puro; exige `local _alvo` ja emitido
-	local function emitirGoalsPlay(info, gs)
-		emitir(servico("TweenService") .. ":Create(_alvo, " .. info .. ", {")
+	-- emite Create + Play de um tween puro no alvo informado
+	local function emitirGoalsPlay(info, gs, alvo)
+		emitir(servico("TweenService") .. ":Create(" .. alvo .. ", " .. info .. ", {")
 		for _, g in ipairs(gs) do
 			emitir("\t" .. g.prop .. " = " .. g.val .. ",")
 		end
@@ -811,63 +1010,65 @@ local function GerarLuau(programa, opcoes)
 
 	-- efeito fade in: aparece suavemente a partir de transparente.
 	-- LayerCollector (ScreenGui) nao tem transparencia: vira so Enabled = true.
-	local function efeitoFadeIn(info)
-		emitir("local _metas = {}")
-		emitir("if _alvo:IsA(\"LayerCollector\") then")
-		emitir("\t_alvo.Enabled = true")
-		emitir("elseif _alvo:IsA(\"CanvasGroup\") then")
-		emitir("\t_alvo.Visible = true")
-		emitir("\t_alvo.GroupTransparency = 1")
-		emitir("\t_metas.GroupTransparency = 0")
-		emitir("elseif _alvo:IsA(\"ImageLabel\") or _alvo:IsA(\"ImageButton\") then")
-		emitir("\t_alvo.Visible = true")
-		emitir("\t_alvo.BackgroundTransparency = 1")
-		emitir("\t_alvo.ImageTransparency = 1")
-		emitir("\t_metas.BackgroundTransparency = 0")
-		emitir("\t_metas.ImageTransparency = 0")
-		emitir("elseif _alvo:IsA(\"TextLabel\") or _alvo:IsA(\"TextButton\") or _alvo:IsA(\"TextBox\") then")
-		emitir("\t_alvo.Visible = true")
-		emitir("\t_alvo.BackgroundTransparency = 1")
-		emitir("\t_alvo.TextTransparency = 1")
-		emitir("\t_metas.BackgroundTransparency = 0")
-		emitir("\t_metas.TextTransparency = 0")
+	local function efeitoFadeIn(info, alvo)
+		local metas = reservar("metas")
+		emitir("local " .. metas .. " = {}")
+		emitir("if " .. alvo .. ":IsA(\"LayerCollector\") then")
+		emitir("\t" .. alvo .. ".Enabled = true")
+		emitir("elseif " .. alvo .. ":IsA(\"CanvasGroup\") then")
+		emitir("\t" .. alvo .. ".Visible = true")
+		emitir("\t" .. alvo .. ".GroupTransparency = 1")
+		emitir("\t" .. metas .. ".GroupTransparency = 0")
+		emitir("elseif " .. alvo .. ":IsA(\"ImageLabel\") or " .. alvo .. ":IsA(\"ImageButton\") then")
+		emitir("\t" .. alvo .. ".Visible = true")
+		emitir("\t" .. alvo .. ".BackgroundTransparency = 1")
+		emitir("\t" .. alvo .. ".ImageTransparency = 1")
+		emitir("\t" .. metas .. ".BackgroundTransparency = 0")
+		emitir("\t" .. metas .. ".ImageTransparency = 0")
+		emitir("elseif " .. alvo .. ":IsA(\"TextLabel\") or " .. alvo .. ":IsA(\"TextButton\") or " .. alvo .. ":IsA(\"TextBox\") then")
+		emitir("\t" .. alvo .. ".Visible = true")
+		emitir("\t" .. alvo .. ".BackgroundTransparency = 1")
+		emitir("\t" .. alvo .. ".TextTransparency = 1")
+		emitir("\t" .. metas .. ".BackgroundTransparency = 0")
+		emitir("\t" .. metas .. ".TextTransparency = 0")
 		emitir("else")
-		emitir("\t_alvo.Visible = true")
-		emitir("\t_alvo.BackgroundTransparency = 1")
-		emitir("\t_metas.BackgroundTransparency = 0")
+		emitir("\t" .. alvo .. ".Visible = true")
+		emitir("\t" .. alvo .. ".BackgroundTransparency = 1")
+		emitir("\t" .. metas .. ".BackgroundTransparency = 0")
 		emitir("end")
-		emitir("if next(_metas) ~= nil then")
-		emitir("\t" .. servico("TweenService") .. ":Create(_alvo, "
-			.. info .. ", _metas):Play()")
+		emitir("if next(" .. metas .. ") ~= nil then")
+		emitir("\t" .. servico("TweenService") .. ":Create(" .. alvo .. ", "
+			.. info .. ", " .. metas .. "):Play()")
 		emitir("end")
 		return ""
 	end
 
 	-- efeito fade out: some suavemente e desliga a visibilidade no fim
-	local function efeitoFadeOut(info, dur)
-		emitir("local _metas = {}")
-		emitir("if _alvo:IsA(\"LayerCollector\") then")
+	local function efeitoFadeOut(info, dur, alvo)
+		local metas = reservar("metas")
+		emitir("local " .. metas .. " = {}")
+		emitir("if " .. alvo .. ":IsA(\"LayerCollector\") then")
 		emitir("\t-- LayerCollector nao tem transparencia: some so no fim")
-		emitir("elseif _alvo:IsA(\"CanvasGroup\") then")
-		emitir("\t_metas.GroupTransparency = 1")
-		emitir("elseif _alvo:IsA(\"ImageLabel\") or _alvo:IsA(\"ImageButton\") then")
-		emitir("\t_metas.BackgroundTransparency = 1")
-		emitir("\t_metas.ImageTransparency = 1")
-		emitir("elseif _alvo:IsA(\"TextLabel\") or _alvo:IsA(\"TextButton\") or _alvo:IsA(\"TextBox\") then")
-		emitir("\t_metas.BackgroundTransparency = 1")
-		emitir("\t_metas.TextTransparency = 1")
+		emitir("elseif " .. alvo .. ":IsA(\"CanvasGroup\") then")
+		emitir("\t" .. metas .. ".GroupTransparency = 1")
+		emitir("elseif " .. alvo .. ":IsA(\"ImageLabel\") or " .. alvo .. ":IsA(\"ImageButton\") then")
+		emitir("\t" .. metas .. ".BackgroundTransparency = 1")
+		emitir("\t" .. metas .. ".ImageTransparency = 1")
+		emitir("elseif " .. alvo .. ":IsA(\"TextLabel\") or " .. alvo .. ":IsA(\"TextButton\") or " .. alvo .. ":IsA(\"TextBox\") then")
+		emitir("\t" .. metas .. ".BackgroundTransparency = 1")
+		emitir("\t" .. metas .. ".TextTransparency = 1")
 		emitir("else")
-		emitir("\t_metas.BackgroundTransparency = 1")
+		emitir("\t" .. metas .. ".BackgroundTransparency = 1")
 		emitir("end")
-		emitir("if next(_metas) ~= nil then")
-		emitir("\t" .. servico("TweenService") .. ":Create(_alvo, "
-			.. info .. ", _metas):Play()")
+		emitir("if next(" .. metas .. ") ~= nil then")
+		emitir("\t" .. servico("TweenService") .. ":Create(" .. alvo .. ", "
+			.. info .. ", " .. metas .. "):Play()")
 		emitir("end")
 		emitir("task.delay(" .. numeroLua(dur + 0.05) .. ", function()")
-		emitir("\tif _alvo:IsA(\"LayerCollector\") then")
-		emitir("\t\t_alvo.Enabled = false")
+		emitir("\tif " .. alvo .. ":IsA(\"LayerCollector\") then")
+		emitir("\t\t" .. alvo .. ".Enabled = false")
 		emitir("\telse")
-		emitir("\t\t_alvo.Visible = false")
+		emitir("\t\t" .. alvo .. ".Visible = false")
 		emitir("\tend")
 		emitir("end)")
 		return ""
@@ -881,114 +1082,102 @@ local function GerarLuau(programa, opcoes)
 	}
 
 	-- efeito slide: desloca a posicao em um eixo a partir do valor atual
-	local function efeitoSlide(info, spec, eixo, sinal)
+	local function efeitoSlide(info, spec, eixo, sinal, alvo)
 		local delta = spec.eparams.delta or 100
-		local op = (sinal < 0) and " - " or " + "
-		local x = "_pos.X.Scale, _pos.X.Offset"
-		local y = "_pos.Y.Scale, _pos.Y.Offset"
-		if eixo == "X" then
-			x = x .. op .. numeroLua(delta)
-		else
-			y = y .. op .. numeroLua(delta)
-		end
-		emitir("local _pos = _alvo.Position")
-		emitir(servico("TweenService") .. ":Create(_alvo, "
+		local off = (eixo == "X")
+			and "UDim2.fromOffset(" .. numeroLua(sinal * delta) .. ", 0)"
+			or "UDim2.fromOffset(0, " .. numeroLua(sinal * delta) .. ")"
+		emitir(servico("TweenService") .. ":Create(" .. alvo .. ", "
 			.. info .. ", {")
-		emitir("\tPosition = UDim2.new(" .. x .. ", " .. y .. "),")
+		emitir("\tPosition = " .. alvo .. ".Position + " .. off .. ",")
 		emitir("}):Play()")
 		return ""
 	end
 
 	-- efeito pulsar: cresce e volta ao tamanho original
-	local function efeitoPulsar(spec, onde, info, dur)
+	local function efeitoPulsar(spec, onde, info, dur, alvo)
 		local escala = spec.eparams.escala or 1.2
 		local infoMeia, e = infoDeSpec(spec, onde, dur / 2)
 		if not infoMeia then return nil, e end
 		local m = numeroLua(escala)
-		emitir("local _tamanho = _alvo.Size")
-		emitir(servico("TweenService") .. ":Create(_alvo, "
+		local tam = reservar("tamanho")
+		emitir("local " .. tam .. " = " .. alvo .. ".Size")
+		emitir(servico("TweenService") .. ":Create(" .. alvo .. ", "
 			.. info .. ", {")
-		emitir("\tSize = UDim2.new(_tamanho.X.Scale * " .. m .. ", _tamanho.X.Offset * "
-			.. m .. ", _tamanho.Y.Scale * " .. m .. ", _tamanho.Y.Offset * " .. m .. "),")
+		emitir("\tSize = UDim2.new(" .. tam .. ".X.Scale * " .. m .. ", " .. tam .. ".X.Offset * "
+			.. m .. ", " .. tam .. ".Y.Scale * " .. m .. ", " .. tam .. ".Y.Offset * " .. m .. "),")
 		emitir("}):Play()")
 		emitir("task.delay(" .. numeroLua(dur / 2) .. ", function()")
-		emitir("\t" .. servico("TweenService") .. ":Create(_alvo, "
+		emitir("\t" .. servico("TweenService") .. ":Create(" .. alvo .. ", "
 			.. infoMeia .. ", {")
-		emitir("\t\tSize = _tamanho,")
+		emitir("\t\tSize = " .. tam .. ",")
 		emitir("\t}):Play()")
 		emitir("end)")
 		return ""
 	end
 
 	-- efeito girar: soma graus (padrao 360) na rotacao atual
-	local function efeitoGirar(info, spec)
+	local function efeitoGirar(info, spec, alvo)
 		local graus = spec.eparams.graus or 360
-		emitir(servico("TweenService") .. ":Create(_alvo, "
+		emitir(servico("TweenService") .. ":Create(" .. alvo .. ", "
 			.. info .. ", {")
-		emitir("\tRotation = _alvo.Rotation + " .. numeroLua(graus) .. ",")
+		emitir("\tRotation = " .. alvo .. ".Rotation + " .. numeroLua(graus) .. ",")
 		emitir("}):Play()")
 		return ""
 	end
 
 	-- efeito crescer/diminuir: multiplica o tamanho atual por um fator
-	local function efeitoEscala(info, spec, fator)
+	local function efeitoEscala(info, spec, fator, alvo)
 		local m = numeroLua(fator)
-		emitir("local _tamanho = _alvo.Size")
-		emitir(servico("TweenService") .. ":Create(_alvo, "
+		local tam = reservar("tamanho")
+		emitir("local " .. tam .. " = " .. alvo .. ".Size")
+		emitir(servico("TweenService") .. ":Create(" .. alvo .. ", "
 			.. info .. ", {")
-		emitir("\tSize = UDim2.new(_tamanho.X.Scale * " .. m .. ", _tamanho.X.Offset * "
-			.. m .. ", _tamanho.Y.Scale * " .. m .. ", _tamanho.Y.Offset * " .. m .. "),")
+		emitir("\tSize = UDim2.new(" .. tam .. ".X.Scale * " .. m .. ", " .. tam .. ".X.Offset * "
+			.. m .. ", " .. tam .. ".Y.Scale * " .. m .. ", " .. tam .. ".Y.Offset * " .. m .. "),")
 		emitir("}):Play()")
 		return ""
 	end
 
-	-- emite o corpo de um efeito (exige `local _alvo` ja emitido)
-	local function emitirEfeito(ref, spec, onde)
-		local canon = canonizarEfeito(spec.efeito)
-		if not canon then
-			return nil, "efeito de animacao desconhecido `" .. tostring(spec.efeito)
-				.. "` em " .. onde
-		end
-		for nome in pairs(spec.eparams) do
-			if not EFEITO_PARAMS[canon][nome] then
-				return nil, "o efeito `" .. canon .. "` nao aceita o parametro `"
-					.. nome .. "` em " .. onde
-			end
-		end
-		local info, extra = infoDeSpec(spec, onde)
-		if not info then return nil, extra end
-		local dur = extra
-		emitir("local _alvo = " .. ref)
+	-- emite o corpo de um efeito para o alvo `ref` (expressao Ja resolvida).
+	-- Efeitos que leem o alvo mais de uma vez ganham uma local isolada em
+	-- do..end; girar e slide repetem uma ref simples sem temporaria.
+	local function emitirEfeito(ref, spec, onde, canon, info, dur)
 		local sl = SLIDES[canon]
-		if sl then
-			return efeitoSlide(info, spec, sl.eixo, sl.sinal)
-		elseif canon == "fade in" then
-			return efeitoFadeIn(info)
-		elseif canon == "fade out" then
-			return efeitoFadeOut(info, dur)
-		elseif canon == "pulsar" then
-			return efeitoPulsar(spec, onde, info, dur)
-		elseif canon == "girar" then
-			return efeitoGirar(info, spec)
-		elseif canon == "crescer" then
-			return efeitoEscala(info, spec, spec.eparams.escala or 1.25)
-		elseif canon == "diminuir" then
-			return efeitoEscala(info, spec, spec.eparams.escala or 0.75)
+		if (sl or canon == "girar") and refSimples(ref) then
+			if sl then return efeitoSlide(info, spec, sl.eixo, sl.sinal, ref) end
+			return efeitoGirar(info, spec, ref)
 		end
-		return nil, "efeito nao implementado: " .. canon
+		local alvo = reservar("alvo")
+		emitir("do")
+		local blk, e = blocoNovo(nivel() + 1, function()
+			emitir("local " .. alvo .. " = " .. ref)
+			if sl then return efeitoSlide(info, spec, sl.eixo, sl.sinal, alvo) end
+			if canon == "fade in" then return efeitoFadeIn(info, alvo) end
+			if canon == "fade out" then return efeitoFadeOut(info, dur, alvo) end
+			if canon == "pulsar" then return efeitoPulsar(spec, onde, info, dur, alvo) end
+			if canon == "girar" then return efeitoGirar(info, spec, alvo) end
+			if canon == "crescer" then return efeitoEscala(info, spec, spec.eparams.escala or 1.25, alvo) end
+			if canon == "diminuir" then return efeitoEscala(info, spec, spec.eparams.escala or 0.75, alvo) end
+			return nil, "efeito nao implementado: " .. tostring(canon)
+		end)
+		if not blk then return nil, e end
+		anexar(blk)
+		emitir("end")
+		return ""
 	end
 
 	-- nome da funcao Luau gerada para uma animacao criada
 	local function nomeFnAnim(nome)
 		local limpo = string.gsub(tostring(nome), "[^%w_]", "_")
 		if string.match(limpo, "^%d") then limpo = "_" .. limpo end
-		return "_anim_" .. limpo
+		return reservar("anim_" .. limpo)
 	end
 
 	local function nomeFnAcao(nome)
 		local limpo = string.gsub(tostring(nome), "[^%w_]", "_")
 		if string.match(limpo, "^%d") then limpo = "_" .. limpo end
-		return "_acao_" .. limpo
+		return reservar("acao_" .. limpo)
 	end
 
 	-- devolve o nome da funcao se a animacao foi criada no programa, senao nil
@@ -1009,31 +1198,42 @@ local function GerarLuau(programa, opcoes)
 				return nil, "animacao `" .. spec.animacao .. "` nao existe (crie com `criar animacao \""
 					.. spec.animacao .. "\"`) em " .. onde
 			end
-			emitir("task.spawn(function() " .. fn .. "(" .. ref .. ") end)")
+			if refSimples(ref) then
+				emitir("task.spawn(" .. fn .. ", " .. ref .. ")")
+			else
+				emitir("task.spawn(function() " .. fn .. "(" .. ref .. ") end)")
+			end
 			return ""
 		end
-		emitir("do")
-		local blk, e = blocoNovo(nivel() + 1, function()
-			if spec.efeito then
-				return emitirEfeito(ref, spec, onde)
+
+		local canon = nil
+		if spec.efeito then
+			canon = canonizarEfeito(spec.efeito)
+			if not canon then
+				return nil, "efeito de animacao desconhecido `" .. tostring(spec.efeito)
+					.. "` em " .. onde
 			end
-			if next(spec.eparams) ~= nil then
-				return nil, "`delta`/`escala`/`graus` so valem junto de um efeito em " .. onde
+			for nome in pairs(spec.eparams) do
+				if not EFEITO_PARAMS[canon][nome] then
+					return nil, "o efeito `" .. canon .. "` nao aceita o parametro `"
+						.. nome .. "` em " .. onde
+				end
 			end
-			if #spec.goals == 0 then
-				return nil, "tween sem propriedades para animar em " .. onde
-			end
-			local gs, gerr = goalsExtras(spec, onde)
-			if not gs then return nil, gerr end
-			local info, ierr = infoDeSpec(spec, onde)
-			if not info then return nil, ierr end
-			emitir("local _alvo = " .. ref)
-			return emitirGoalsPlay(info, gs)
-		end)
-		if not blk then return nil, e end
-		anexar(blk)
-		emitir("end")
-		return ""
+		elseif next(spec.eparams) ~= nil then
+			return nil, "`delta`/`escala`/`graus` so valem junto de um efeito em " .. onde
+		elseif #spec.goals == 0 then
+			return nil, "tween sem propriedades para animar em " .. onde
+		end
+		local info, extra = infoDeSpec(spec, onde)
+		if not info then return nil, extra end
+		local dur = extra
+
+		if spec.efeito then
+			return emitirEfeito(ref, spec, onde, canon, info, dur)
+		end
+		local gs, gerr = goalsExtras(spec, onde)
+		if not gs then return nil, gerr end
+		return emitirGoalsPlay(info, gs, ref)
 	end
 
 	-----------------------------------------------------------------------
@@ -1082,9 +1282,14 @@ local function GerarLuau(programa, opcoes)
 			local valor = (c.oq == "visivel") and "true" or "false"
 			-- mesma regra do comando de visibilidade: LayerCollector (ScreenGui e
 			-- afins) expoe Enabled; o restante da GUI expoe Visible
-			return "((function() local _vis = " .. ref
-				.. " if _vis:IsA(\"LayerCollector\") then return _vis.Enabled"
-				.. " else return _vis.Visible end end)() == " .. valor .. ")"
+			if refSimples(ref) then
+				return "(if " .. ref .. ":IsA(\"LayerCollector\") then " .. ref .. ".Enabled else " .. ref
+					.. ".Visible) == " .. valor
+			end
+			local vis = reservar("vis")
+			return "((function() local " .. vis .. " = " .. ref
+				.. " if " .. vis .. ":IsA(\"LayerCollector\") then return " .. vis .. ".Enabled"
+				.. " else return " .. vis .. ".Visible end end)() == " .. valor .. ")"
 		end
 
 		if t == "tecla" then
@@ -1107,11 +1312,12 @@ local function GerarLuau(programa, opcoes)
 			local ref, err = gerarValor(c.alvoExpr or { k = "ident", v = c.alvo })
 			if not ref then return nil, err end
 			local compara = c.estado and "> 0" or "<= 0"
-			return "((function() if type(" .. ref .. ") == \"table\" then return (" .. ref .. ".vida or 0) " .. compara .. " end; local _humanoide = (" .. ref
+			local hum = reservar("humanoide")
+			return "((function() if type(" .. ref .. ") == \"table\" then return (" .. ref .. ".vida or 0) " .. compara .. " end; local " .. hum .. " = (" .. ref
 				.. "):IsA(\"Humanoid\") and " .. ref .. " or ("
 				.. ref .. "):IsA(\"Player\") and " .. ref
 				.. ".Character and " .. ref .. ".Character:FindFirstChildOfClass(\"Humanoid\") or ("
-				.. ref .. "):FindFirstChildOfClass(\"Humanoid\"); return _humanoide ~= nil and _humanoide.Health "
+				.. ref .. "):FindFirstChildOfClass(\"Humanoid\"); return " .. hum .. " ~= nil and " .. hum .. ".Health "
 				.. compara .. " end)())"
 		end
 
@@ -1120,9 +1326,10 @@ local function GerarLuau(programa, opcoes)
 			if not a then return nil, err end
 			local b, e = gerarValor(c.bExpr or { k = "ident", v = c.b })
 			if not b then return nil, e end
-			return "((function() for _, _posarte in ipairs(" .. a .. ":GetTouchingParts()) do "
-				.. "if _posarte == " .. b .. " or _posarte:IsDescendantOf(" .. b
-				.. ") or " .. b .. ":IsDescendantOf(_posarte) then return true end end; return false end)())"
+			local parte = reservar("parte")
+			return "((function() for _, " .. parte .. " in ipairs(" .. a .. ":GetTouchingParts()) do "
+				.. "if " .. parte .. " == " .. b .. " or " .. parte .. ":IsDescendantOf(" .. b
+				.. ") or " .. b .. ":IsDescendantOf(" .. parte .. ") then return true end end; return false end)())"
 		end
 
 		if t == "criado" then
@@ -1165,8 +1372,10 @@ local function GerarLuau(programa, opcoes)
 		for i = 1, #partes - 1 do table.insert(basePartes, partes[i]) end
 		local prop = partes[#partes]
 		local base, err
-		if #basePartes == 1 and aliases[basePartes[1]] then
-			base = aliases[basePartes[1]]
+		if #basePartes == 1 then
+			-- mesma resolucao de uma referencia simples: alias, local gerada
+			-- (ex.: o parametro `acaoAlvo` dentro de uma acao) ou caminho.
+			base, err = gerarReferencia({ k = "ident", v = basePartes[1] })
 		else
 			base, err = resolverCaminho(basePartes)
 		end
@@ -1174,9 +1383,48 @@ local function GerarLuau(programa, opcoes)
 		return base, prop, nil
 	end
 
+	local function propDeJogadorServidor(partesAtrib)
+		if contexto == "cliente" then return nil end
+		if #partesAtrib ~= 2 then return nil end
+		local nome = string.lower(partesAtrib[1])
+		if nome ~= "jogador" and nome ~= "player" then return nil end
+		if aliases[partesAtrib[1]] then return nil end
+		local canon = PROPRIEDADES[string.lower(partesAtrib[2])]
+		if canon and PROPRIEDADES_HUMANOIDE[canon] then return canon end
+		return nil
+	end
+
+	-- `jogador.<prop> = ...` no servidor/comum percorre todos os jogadores.
+	local function gerarLoopJogador(canon, valor, op)
+		local players = servico("Players")
+		local vj = reservar("jogadorServidor")
+		local vp = reservar("personagemServidor")
+		local vh = reservar("humanoideServidor")
+		local alvo = vh .. "." .. canon
+		emitir("for _, " .. vj .. " in ipairs(" .. players .. ":GetPlayers()) do")
+		emitir("\tlocal " .. vp .. " = " .. vj .. ".Character")
+		emitir("\tlocal " .. vh .. " = " .. vp .. " and " .. vp .. ":FindFirstChildOfClass(\"Humanoid\")")
+		emitir("\tif " .. vh .. " then")
+		if op and op ~= "=" then
+			local luauOp = (op == "+=") and "+" or "-"
+			emitir("\t\t" .. alvo .. " = " .. alvo .. " " .. luauOp .. " " .. valor)
+		else
+			emitir("\t\t" .. alvo .. " = " .. valor)
+		end
+		emitir("\tend")
+		emitir("end")
+		return ""
+	end
+
 	-- <obj>.<prop> = <valor>
 	local function gerarAtribuicao(caminho, expr)
 		local partesAtrib = dividirCaminho(caminho)
+		local canonJogador = propDeJogadorServidor(partesAtrib)
+		if canonJogador then
+			local valor, verr = gerarValor(expr, partesAtrib[2])
+			if not valor then return nil, verr end
+			return gerarLoopJogador(canonJogador, valor, "=")
+		end
 		local base, prop, err = resolverBase(caminho)
 		if not base then return nil, err end
 
@@ -1199,8 +1447,14 @@ local function GerarLuau(programa, opcoes)
 
 		-- CameraType e uma propriedade Enum; aceite os nomes mais usados como
 		-- valores YashScript para evitar exigir sintaxe Luau no menu/camera.
-		if string.lower(prop or "") == "cameratype" and expr and expr.k == "ident" then
-			local tiposCamera = { scriptable = "Scriptable", custom = "Custom", attach = "Attach", track = "Track", watch = "Watch" }
+		if string.lower(prop or "") == "cameratype"
+			and expr and (expr.k == "ident" or expr.k == "str") then
+			local tiposCamera = {
+				scriptable = "Scriptable", custom = "Custom", attach = "Attach",
+				track = "Track", watch = "Watch", fixed = "Fixed", fixa = "Fixed",
+				fixo = "Fixed", follow = "Follow", seguir = "Follow",
+				orbit = "Orbital", orbital = "Orbital", orbitar = "Orbital",
+			}
 			local tipoCamera = tiposCamera[string.lower(tostring(expr.v))]
 			if tipoCamera then
 				emitir(prefixo .. " = Enum.CameraType." .. tipoCamera)
@@ -1294,11 +1548,17 @@ local function GerarLuau(programa, opcoes)
 				return gerarAtribuicao(cmd.caminho, cmd.expr)
 			end
 			-- += / -= viram operacao Luau direta
+			local partesAtrib = dividirCaminho(cmd.caminho)
+			local canonJogador = propDeJogadorServidor(partesAtrib)
+			if canonJogador then
+				local valorJ, verrJ = gerarValor(cmd.expr, partesAtrib[2])
+				if not valorJ then return nil, verrJ end
+				return gerarLoopJogador(canonJogador, valorJ, cmd.op)
+			end
 			local base, prop, err = resolverBase(cmd.caminho)
 			if not base then return nil, err end
 			local valor, verr = gerarValor(cmd.expr)
 			if not valor then return nil, verr end
-			local partesAtrib = dividirCaminho(cmd.caminho)
 			local destino = prop and ((objetosDados[partesAtrib[1]]) and prop
 				or PROPRIEDADES[string.lower(prop)] or prop) or nil
 			local prefixo = destino and (base .. "." .. destino) or base
@@ -1314,14 +1574,23 @@ local function GerarLuau(programa, opcoes)
 			if not indice then return nil, e end
 			local valor, verr = gerarValor(cmd.expr)
 			if not valor then return nil, verr end
-			local atribuir = cmd.op == "=" and ("_tabela[_indice] = " .. valor)
-				or ("_tabela[_indice] = _tabela[_indice] "
-					.. (cmd.op == "+=" and "+" or "-") .. " " .. valor)
+			if cmd.op == "=" or (refSimples(tabela) and refSimples(indice)) then
+				local alvo = tabela .. "[" .. indice .. "]"
+				if cmd.op == "=" then
+					emitir(alvo .. " = " .. valor)
+				else
+					emitir(alvo .. " = " .. alvo .. (cmd.op == "+=" and " + " or " - ") .. valor)
+				end
+				return ""
+			end
+			local nomeTabela = reservar("tabela")
+			local nomeIndice = reservar("indice")
 			emitir("do")
 			local bloco, be = blocoNovo(nivel() + 1, function()
-				emitir("local _tabela = " .. tabela)
-				emitir("local _indice = " .. indice)
-				emitir(atribuir)
+				emitir("local " .. nomeTabela .. " = " .. tabela)
+				emitir("local " .. nomeIndice .. " = " .. indice)
+				local alvo = nomeTabela .. "[" .. nomeIndice .. "]"
+				emitir(alvo .. " = " .. alvo .. (cmd.op == "+=" and " + " or " - ") .. valor)
 				return ""
 			end)
 			if not bloco then return nil, be end
@@ -1330,11 +1599,78 @@ local function GerarLuau(programa, opcoes)
 			return ""
 		end
 
+		if t == "luau_bruto" then
+			for _, lin in ipairs(cmd.linhas or {}) do
+				emitir(lin)
+			end
+			return ""
+		end
+		if t == "viajar" then
+			local id = tostring(cmd.id)
+			local argId = tonumber(id) and id or textoLua(id)
+			if contexto == "cliente" then
+				local teleportService = servico("TeleportService")
+				local players = servico("Players")
+				emitir(teleportService .. ":Teleport(" .. argId .. ", " .. players .. ".LocalPlayer)")
+			else
+				local players = servico("Players")
+				local tp = servico("TeleportService")
+				emitir("for _, jogador in ipairs(" .. players .. ":GetPlayers()) do")
+				emitir("\t" .. tp .. ":Teleport(" .. argId .. ", jogador)")
+				emitir("end")
+			end
+			return ""
+		end
+		if t == "animacao_asset" then
+			if not locaisAuxiliares["trilhaAnimacao"] then
+				locaisAuxiliares["trilhaAnimacao"] = reservar("trilhaAnimacao")
+			end
+			local trilha = locaisAuxiliares["trilhaAnimacao"]
+			if contexto == "cliente" then
+				local players = servico("Players")
+				emitir("local personagem = " .. players .. ".LocalPlayer.Character")
+				emitir("if personagem then")
+				emitir("\tlocal humanoide = personagem:FindFirstChildOfClass(\"Humanoid\")")
+				emitir("\tif humanoide then")
+				emitir("\t\t" .. trilha .. " = humanoide:LoadAnimation((function()")
+				emitir("\t\t\tlocal anim = Instance.new(\"Animation\")")
+				emitir("\t\t\tanim.AnimationId = " .. textoLua("rbxassetid://" .. tostring(cmd.id)) .. "")
+				emitir("\t\t\treturn anim")
+				emitir("\t\tend)())")
+				emitir("\t\t" .. trilha .. ":Play()")
+				emitir("\tend")
+				emitir("end")
+			else
+				local players = servico("Players")
+				emitir("for _, jogador in ipairs(" .. players .. ":GetPlayers()) do")
+				emitir("\tlocal personagem = jogador.Character")
+				emitir("\tif personagem then")
+				emitir("\t\tlocal humanoide = personagem:FindFirstChildOfClass(\"Humanoid\")")
+				emitir("\t\tif humanoide then")
+				emitir("\t\t\t" .. trilha .. " = humanoide:LoadAnimation((function()")
+				emitir("\t\t\t\tlocal anim = Instance.new(\"Animation\")")
+				emitir("\t\t\t\tanim.AnimationId = " .. textoLua("rbxassetid://" .. tostring(cmd.id)) .. "")
+				emitir("\t\t\t\treturn anim")
+				emitir("\t\t\tend)())")
+				emitir("\t\t\t" .. trilha .. ":Play()")
+				emitir("\t\tend")
+				emitir("\tend")
+				emitir("end")
+			end
+			return ""
+		end
+		if t == "parar_animacao" then
+			if not locaisAuxiliares["trilhaAnimacao"] then
+				locaisAuxiliares["trilhaAnimacao"] = reservar("trilhaAnimacao")
+			end
+			local trilha = locaisAuxiliares["trilhaAnimacao"]
+			emitir("if " .. trilha .. " then " .. trilha .. ":Stop() end")
+			return ""
+		end
 		if t == "variavel" then
 			if cmd.expr then return gerarAtribuicao(cmd.nome, cmd.expr) end
 			return ""
 		end
-
 		if t == "retornar" then
 			if not dentroFuncao then return nil, "'retornar' só pode ser usado dentro de uma função" end
 			if not cmd.expr then emitir("do return nil end"); return "" end
@@ -1343,7 +1679,6 @@ local function GerarLuau(programa, opcoes)
 			emitir("do return " .. valor .. " end")
 			return ""
 		end
-
 		if t == "expressao" then
 			local valor, err = gerarValor(cmd.expr)
 			if not valor then return nil, err end
@@ -1381,35 +1716,47 @@ local function GerarLuau(programa, opcoes)
 			-- ScreenGui/SurfaceGui/BillboardGui (LayerCollector) usam Enabled;
 			-- o restante da GUI usa Visible. A classe so existe em runtime,
 			-- entao o gerador emite a escolha em runtime.
-			local function corpoVisibilidade(prop)
-				return function()
-					if cmd.acao == "alternar" then
-						emitir(prop .. " = not " .. prop)
-					elseif cmd.acao == "mostrar" then
-						emitir(prop .. " = true")
-					else
-						emitir(prop .. " = false")
-					end
-					return ""
+			local function emitirVisibilidade(prop)
+				if cmd.acao == "alternar" then
+					emitir(prop .. " = not " .. prop)
+				elseif cmd.acao == "mostrar" then
+					emitir(prop .. " = true")
+				else
+					emitir(prop .. " = false")
 				end
 			end
-			emitir("do")
-			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir("local _vis = " .. ref)
-				emitir("if _vis:IsA(\"LayerCollector\") then")
-				local s1, e1 = blocoNovo(nivel() + 1, corpoVisibilidade("_vis.Enabled"))
+			if refSimples(ref) then
+				emitir("if " .. ref .. ":IsA(\"LayerCollector\") then")
+				local s1, e1 = blocoNovo(nivel() + 1, function()
+					emitirVisibilidade(ref .. ".Enabled")
+					return ""
+				end)
 				if not s1 then return nil, e1 end
 				anexar(s1)
 				emitir("else")
-				local s2, e2 = blocoNovo(nivel() + 1, corpoVisibilidade("_vis.Visible"))
+				local s2, e2 = blocoNovo(nivel() + 1, function()
+					emitirVisibilidade(ref .. ".Visible")
+					return ""
+				end)
 				if not s2 then return nil, e2 end
 				anexar(s2)
 				emitir("end")
-				return ""
-			end)
-			if not blk then return nil, e end
-			anexar(blk)
-			emitir("end")
+			else
+				local vis = reservar("vis")
+				emitir("do")
+				local blk, e = blocoNovo(nivel() + 1, function()
+					emitir("local " .. vis .. " = " .. ref)
+					emitir("if " .. vis .. ":IsA(\"LayerCollector\") then")
+					emitirVisibilidade(vis .. ".Enabled")
+					emitir("else")
+					emitirVisibilidade(vis .. ".Visible")
+					emitir("end")
+					return ""
+				end)
+				if not blk then return nil, e end
+				anexar(blk)
+				emitir("end")
+			end
 
 			if spec then
 				local ok, e = aplicarSpecNoRef(ref, spec, (cmd.acao or "visivel") .. "(...)")
@@ -1424,28 +1771,31 @@ local function GerarLuau(programa, opcoes)
 			local players = servico("Players")
 			local ativo = cmd.acao ~= "esconder"
 			local mudaTudo = cmd.acao == "mudar"
+			local cenaAtual = reservar("cenaAtual")
+			local instancia = reservar("instancia")
+			local mostrarCena = reservar("mostrarCena")
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir("local _cenaAtual = " .. nome)
-				emitir("for _, _instancia in ipairs(" .. workspace .. ":GetDescendants()) do")
-				emitir("\tif _instancia:GetAttribute(\"Cena\") then")
-				emitir("\t\tlocal _mostrarCena = _instancia:GetAttribute(\"Cena\") == _cenaAtual")
+				emitir("local " .. cenaAtual .. " = " .. nome)
+				emitir("for _, " .. instancia .. " in ipairs(" .. workspace .. ":GetDescendants()) do")
+				emitir("\tif " .. instancia .. ":GetAttribute(\"Cena\") then")
+				emitir("\t\tlocal " .. mostrarCena .. " = " .. instancia .. ":GetAttribute(\"Cena\") == " .. cenaAtual)
 				if mudaTudo then
-					emitir("\t\tif _instancia:IsA(\"GuiObject\") then _instancia.Visible = _mostrarCena")
-					emitir("\t\telseif _instancia:IsA(\"BasePart\") then _instancia.Transparency = _mostrarCena and 0 or 1; _instancia.CanCollide = _mostrarCena end")
+					emitir("\t\tif " .. instancia .. ":IsA(\"GuiObject\") then " .. instancia .. ".Visible = " .. mostrarCena)
+					emitir("\t\telseif " .. instancia .. ":IsA(\"BasePart\") then " .. instancia .. ".Transparency = " .. mostrarCena .. " and 0 or 1; " .. instancia .. ".CanCollide = " .. mostrarCena .. " end")
 				else
-					emitir("\t\tif _mostrarCena and _instancia:IsA(\"GuiObject\") then _instancia.Visible = " .. tostring(ativo))
-					emitir("\t\telseif _mostrarCena and _instancia:IsA(\"BasePart\") then _instancia.Transparency = " .. (ativo and "0" or "1") .. "; _instancia.CanCollide = " .. tostring(ativo) .. " end")
+					emitir("\t\tif " .. mostrarCena .. " and " .. instancia .. ":IsA(\"GuiObject\") then " .. instancia .. ".Visible = " .. tostring(ativo))
+					emitir("\t\telseif " .. mostrarCena .. " and " .. instancia .. ":IsA(\"BasePart\") then " .. instancia .. ".Transparency = " .. (ativo and "0" or "1") .. "; " .. instancia .. ".CanCollide = " .. tostring(ativo) .. " end")
 				end
 				emitir("\tend")
 				emitir("end")
-				emitir("local _jogador = " .. players .. ".LocalPlayer")
-				emitir("local _gui = _jogador and _jogador:FindFirstChildOfClass(\"PlayerGui\")")
-				emitir("if _gui then for _, _instancia in ipairs(_gui:GetDescendants()) do")
+				emitir("local " .. reservar("jogador") .. " = " .. players .. ".LocalPlayer")
+				emitir("local " .. reservar("gui") .. " = " .. reservar("jogador") .. " and " .. reservar("jogador") .. ":FindFirstChildOfClass(\"PlayerGui\")")
+				emitir("if " .. reservar("gui") .. " then for _, " .. instancia .. " in ipairs(" .. reservar("gui") .. ":GetDescendants()) do")
 				if mudaTudo then
-					emitir("\tif _instancia:GetAttribute(\"Cena\") then _instancia.Visible = (_instancia:GetAttribute(\"Cena\") == _cenaAtual) end")
+					emitir("\tif " .. instancia .. ":GetAttribute(\"Cena\") then " .. instancia .. ".Visible = (" .. instancia .. ":GetAttribute(\"Cena\") == " .. cenaAtual .. ") end")
 				else
-					emitir("\tif _instancia:GetAttribute(\"Cena\") == _cenaAtual then _instancia.Visible = " .. tostring(ativo) .. " end")
+					emitir("\tif " .. instancia .. ":GetAttribute(\"Cena\") == " .. cenaAtual .. " then " .. instancia .. ".Visible = " .. tostring(ativo) .. " end")
 				end
 				emitir("end end")
 				return ""
@@ -1494,7 +1844,11 @@ local function GerarLuau(programa, opcoes)
 			end
 			local ref, err = gerarReferencia({ k = "ident", v = alvoEvento })
 			if not ref then return nil, err end
-			emitir("task.spawn(function() " .. fn .. "(" .. ref .. ") end)")
+			if refSimples(ref) then
+				emitir("task.spawn(" .. fn .. ", " .. ref .. ")")
+			else
+				emitir("task.spawn(function() " .. fn .. "(" .. ref .. ") end)")
+			end
 			return ""
 		end
 
@@ -1545,26 +1899,28 @@ local function GerarLuau(programa, opcoes)
 		if t == "dano" or t == "curar" or t == "matar" then
 			local alvo, err = gerarReferencia({ k = "ident", v = cmd.alvo }, true)
 			if not alvo then return nil, err end
+			local alvoVida = reservar("alvoVida")
+			local humanoide = reservar("humanoide")
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir("local _alvoVida = " .. alvo)
-				emitir("if type(_alvoVida) == \"table\" and type(_alvoVida.vida) == \"number\" then")
+				emitir("local " .. alvoVida .. " = " .. alvo)
+				emitir("if type(" .. alvoVida .. ") == \"table\" and type(" .. alvoVida .. ".vida) == \"number\" then")
 				if t == "dano" then
-					emitir("\t_alvoVida.vida = math.max(0, _alvoVida.vida - " .. numeroLua(cmd.valor) .. ")")
+					emitir("\t" .. alvoVida .. ".vida = math.max(0, " .. alvoVida .. ".vida - " .. numeroLua(cmd.valor) .. ")")
 				elseif t == "curar" then
-					emitir("\t_alvoVida.vida = math.min(_alvoVida.vida_maxima or math.huge, _alvoVida.vida + " .. numeroLua(cmd.valor) .. ")")
+					emitir("\t" .. alvoVida .. ".vida = math.min(" .. alvoVida .. ".vida_maxima or math.huge, " .. alvoVida .. ".vida + " .. numeroLua(cmd.valor) .. ")")
 				else
-					emitir("\t_alvoVida.vida = 0")
+					emitir("\t" .. alvoVida .. ".vida = 0")
 				end
 				emitir("else")
-				emitir("local _humanoide = (_alvoVida:IsA(\"Humanoid\") and _alvoVida) or (_alvoVida:IsA(\"Player\") and _alvoVida.Character and _alvoVida.Character:FindFirstChildOfClass(\"Humanoid\")) or _alvoVida:FindFirstChildOfClass(\"Humanoid\")")
-				emitir("if _humanoide then")
+				emitir("local " .. humanoide .. " = (" .. alvoVida .. ":IsA(\"Humanoid\") and " .. alvoVida .. ") or (" .. alvoVida .. ":IsA(\"Player\") and " .. alvoVida .. ".Character and " .. alvoVida .. ".Character:FindFirstChildOfClass(\"Humanoid\")) or " .. alvoVida .. ":FindFirstChildOfClass(\"Humanoid\")")
+				emitir("if " .. humanoide .. " then")
 				if t == "dano" then
-					emitir("\t_humanoide:TakeDamage(" .. numeroLua(cmd.valor) .. ")")
+					emitir("\t" .. humanoide .. ":TakeDamage(" .. numeroLua(cmd.valor) .. ")")
 				elseif t == "curar" then
-					emitir("\t_humanoide.Health = math.clamp(_humanoide.Health + " .. numeroLua(cmd.valor) .. ", 0, _humanoide.MaxHealth)")
+					emitir("\t" .. humanoide .. ".Health = math.clamp(" .. humanoide .. ".Health + " .. numeroLua(cmd.valor) .. ", 0, " .. humanoide .. ".MaxHealth)")
 				else
-					emitir("\t_humanoide.Health = 0")
+					emitir("\t" .. humanoide .. ".Health = 0")
 				end
 				emitir("end")
 				emitir("end")
@@ -1579,11 +1935,13 @@ local function GerarLuau(programa, opcoes)
 			local alvo, err = gerarReferencia({ k = "ident", v = cmd.alvo }, true)
 			if not alvo then return nil, err end
 			local players = servico("Players")
+			local alvoVida = reservar("alvoVida")
+			local player = reservar("player")
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir("local _alvoVida = " .. alvo)
-				emitir("local _player = (_alvoVida:IsA(\"Player\") and _alvoVida) or " .. players .. ":GetPlayerFromCharacter(_alvoVida) or " .. players .. ":FindFirstChild(_alvoVida.Name)")
-				emitir("if _player then _player:LoadCharacter() end")
+				emitir("local " .. alvoVida .. " = " .. alvo)
+				emitir("local " .. player .. " = (" .. alvoVida .. ":IsA(\"Player\") and " .. alvoVida .. ") or " .. players .. ":GetPlayerFromCharacter(" .. alvoVida .. ") or " .. players .. ":FindFirstChild(" .. alvoVida .. ".Name)")
+				emitir("if " .. player .. " then " .. player .. ":LoadCharacter() end")
 				return ""
 			end)
 			if not blk then return nil, e end
@@ -1607,28 +1965,33 @@ local function GerarLuau(programa, opcoes)
 			if t == "mover" then
 				cf = "CFrame.new(" .. numeroLua(cmd.para.x) .. ", " .. numeroLua(cmd.para.y) .. ", " .. numeroLua(cmd.para.z or 0) .. ")"
 			else
-				cf = "CFrame.new(_alvo:GetPivot().Position) * CFrame.Angles(math.rad(" .. numeroLua(cmd.para.x) .. "), math.rad(" .. numeroLua(cmd.para.y) .. "), math.rad(" .. numeroLua(cmd.para.z or 0) .. "))"
+				cf = "CFrame.new(" .. reservar("alvo") .. ":GetPivot().Position) * CFrame.Angles(math.rad(" .. numeroLua(cmd.para.x) .. "), math.rad(" .. numeroLua(cmd.para.y) .. "), math.rad(" .. numeroLua(cmd.para.z or 0) .. "))"
 			end
+			local alvoNom = reservar("alvo")
+			local inicio = reservar("inicio")
+			local destino = reservar("destino")
+			local inicioTempo = reservar("inicioTempo")
+			local alpha = reservar("alpha")
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir("local _alvo = " .. alvo)
-				emitir("local _inicio = _alvo:GetPivot()")
+				emitir("local " .. alvoNom .. " = " .. alvo)
+				emitir("local " .. inicio .. " = " .. alvoNom .. ":GetPivot()")
 				if t == "mover" then
-					emitir("local _destino = CFrame.new(" .. numeroLua(cmd.para.x) .. ", " .. numeroLua(cmd.para.y) .. ", " .. numeroLua(cmd.para.z or 0) .. ") * _inicio.Rotation")
+					emitir("local " .. destino .. " = CFrame.new(" .. numeroLua(cmd.para.x) .. ", " .. numeroLua(cmd.para.y) .. ", " .. numeroLua(cmd.para.z or 0) .. ") * " .. inicio .. ".Rotation")
 				else
-					emitir("local _destino = " .. cf)
+					emitir("local " .. destino .. " = " .. cf)
 				end
-				emitir("if _alvo:IsA(\"BasePart\") then")
-				emitir("\t" .. tweenService .. ":Create(_alvo, TweenInfo.new(" .. numeroLua(duracao) .. "), { CFrame = _destino }):Play()")
+				emitir("if " .. alvoNom .. ":IsA(\"BasePart\") then")
+				emitir("\t" .. tweenService .. ":Create(" .. alvoNom .. ", TweenInfo.new(" .. numeroLua(duracao) .. "), { CFrame = " .. destino .. " }):Play()")
 				emitir("else")
 				emitir("\ttask.spawn(function()")
-				emitir("\t\tlocal _inicioTempo = os.clock()")
-				emitir("\t\twhile _alvo.Parent and os.clock() - _inicioTempo < " .. numeroLua(duracao) .. " do")
-				emitir("\t\t\tlocal _alpha = math.clamp((os.clock() - _inicioTempo) / math.max(" .. numeroLua(duracao) .. ", 0.001), 0, 1)")
-				emitir("\t\t\t_alvo:PivotTo(_inicio:Lerp(_destino, _alpha))")
+				emitir("\t\tlocal " .. inicioTempo .. " = os.clock()")
+				emitir("\t\twhile " .. alvoNom .. ".Parent and os.clock() - " .. inicioTempo .. " < " .. numeroLua(duracao) .. " do")
+				emitir("\t\t\tlocal " .. alpha .. " = math.clamp((os.clock() - " .. inicioTempo .. ") / math.max(" .. numeroLua(duracao) .. ", 0.001), 0, 1)")
+				emitir("\t\t\t" .. alvoNom .. ":PivotTo(" .. inicio .. ":Lerp(" .. destino .. ", " .. alpha .. "))")
 				emitir("\t\t\ttask.wait()")
 				emitir("\t\tend")
-				emitir("\t\tif _alvo.Parent then _alvo:PivotTo(_destino) end")
+				emitir("\t\tif " .. alvoNom .. ".Parent then " .. alvoNom .. ":PivotTo(" .. destino .. ") end")
 				emitir("\tend)")
 				emitir("end")
 				return ""
@@ -1641,13 +2004,14 @@ local function GerarLuau(programa, opcoes)
 		if t == "som" then
 			local soundService = servico("SoundService")
 			local debris = servico("Debris")
+			local som = reservar("som")
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir('local _som = Instance.new("Sound")')
-				emitir('_som.SoundId = "rbxassetid://' .. tostring(cmd.id) .. '"')
-				emitir("_som.Parent = " .. soundService)
-				emitir("_som:Play()")
-				emitir(debris .. ":AddItem(_som, 5)")
+				emitir("local " .. som .. ' = Instance.new("Sound")')
+				emitir(som .. '.SoundId = "rbxassetid://' .. tostring(cmd.id) .. '"')
+				emitir(som .. ".Parent = " .. soundService)
+				emitir(som .. ":Play()")
+				emitir(debris .. ":AddItem(" .. som .. ", 5)")
 				return ""
 			end)
 			if not blk then return nil, e end
@@ -1687,13 +2051,14 @@ local function GerarLuau(programa, opcoes)
 			local alvo, err = gerarReferencia({ k = "ident", v = cmd.alvo }, true)
 			if not alvo then return nil, err end
 			local workspace = servico("Workspace")
+			local explosao = reservar("explosao")
 			emitir("do")
 			local blk, e = blocoNovo(nivel() + 1, function()
-				emitir('local _explosao = Instance.new("Explosion")')
-				emitir("_explosao.Position = " .. alvo .. ":GetPivot().Position")
-				emitir("_explosao.BlastRadius = " .. numeroLua(cmd.raio or 8))
-				emitir("_explosao.BlastPressure = " .. numeroLua(cmd.dano or 50))
-				emitir("_explosao.Parent = " .. workspace)
+				emitir("local " .. explosao .. ' = Instance.new("Explosion")')
+				emitir(explosao .. ".Position = " .. alvo .. ":GetPivot().Position")
+				emitir(explosao .. ".BlastRadius = " .. numeroLua(cmd.raio or 8))
+				emitir(explosao .. ".BlastPressure = " .. numeroLua(cmd.dano or 50))
+				emitir(explosao .. ".Parent = " .. workspace)
 				return ""
 			end)
 			if not blk then return nil, e end
@@ -1706,13 +2071,16 @@ local function GerarLuau(programa, opcoes)
 			if not quem then return nil, err end
 			local alvo, e = gerarReferencia({ k = "ident", v = cmd.alvo }, true)
 			if not alvo then return nil, e end
+			local quemNom = reservar("quem")
+			local personagemAlvo = reservar("personagemAlvo")
+			local humanoide = reservar("humanoide")
 			emitir("task.spawn(function()")
 			local blk, be = blocoNovo(nivel() + 1, function()
-				emitir("local _quem = " .. quem)
-				emitir("local _personagemAlvo = _quem:IsA(\"Player\") and (_quem.Character or _quem.CharacterAdded:Wait()) or _quem")
-				emitir("local _humanoide = _personagemAlvo:IsA(\"Humanoid\") and _personagemAlvo or _personagemAlvo:FindFirstChildOfClass(\"Humanoid\")")
-				emitir("while _personagemAlvo.Parent and " .. alvo .. ".Parent do")
-				emitir("\tif _humanoide then _humanoide:MoveTo(" .. alvo .. ":GetPivot().Position) else _personagemAlvo:PivotTo(" .. alvo .. ":GetPivot()) end")
+				emitir("local " .. quemNom .. " = " .. quem)
+				emitir("local " .. personagemAlvo .. " = " .. quemNom .. ":IsA(\"Player\") and (" .. quemNom .. ".Character or " .. quemNom .. ".CharacterAdded:Wait()) or " .. quemNom)
+				emitir("local " .. humanoide .. " = " .. personagemAlvo .. ":IsA(\"Humanoid\") and " .. personagemAlvo .. " or " .. personagemAlvo .. ":FindFirstChildOfClass(\"Humanoid\")")
+				emitir("while " .. personagemAlvo .. ".Parent and " .. alvo .. ".Parent do")
+				emitir("\tif " .. humanoide .. " then " .. humanoide .. ":MoveTo(" .. alvo .. ":GetPivot().Position) else " .. personagemAlvo .. ":PivotTo(" .. alvo .. ":GetPivot()) end")
 				emitir("\ttask.wait(0.2)")
 				emitir("end")
 				return ""
@@ -1729,17 +2097,18 @@ local function GerarLuau(programa, opcoes)
 			if not origem then return nil, err end
 			local pai, e = gerarReferencia({ k = #paiParts > 1 and "caminho" or "ident", partes = paiParts, v = paiParts[1] })
 			if not pai then return nil, e end
-			local clone = cmd.nome and aliases[cmd.nome] or "_instanciaClonada"
+			local clone = cmd.nome and aliases[cmd.nome] or "nil"
 			if cmd.nome and not clone then return nil, "variavel de destino do clonar nao foi declarada: " .. tostring(cmd.nome) end
+			local copiaTemp = reservar("copiaTemp")
 			emitir("do")
 			local blk, be = blocoNovo(nivel() + 1, function()
-				emitir("local _copiaTemp = " .. origem .. ":Clone()")
-				emitir("if _copiaTemp then")
+				emitir("local " .. copiaTemp .. " = " .. origem .. ":Clone()")
+				emitir("if " .. copiaTemp .. " then")
 				if cmd.nome then
-					emitir("\t" .. clone .. " = _copiaTemp")
+					emitir("\t" .. clone .. " = " .. copiaTemp)
 					emitir("\t" .. clone .. ".Name = " .. textoLua(cmd.nome))
 				end
-				emitir("\t_copiaTemp.Parent = " .. pai)
+				emitir("\t" .. copiaTemp .. ".Parent = " .. pai)
 				emitir("end")
 				return ""
 			end)
@@ -1863,7 +2232,7 @@ local function GerarLuau(programa, opcoes)
 	local function nomeInterno(prefixo, nome)
 		local limpo = string.gsub(tostring(nome), "[^%w_]", "_")
 		if string.match(limpo, "^%d") then limpo = "_" .. limpo end
-		return prefixo .. limpo
+		return reservar(prefixo .. limpo)
 	end
 	local function legadoLua(v, prop, gui)
 		if type(v) == "number" then return numeroLua(v) end
@@ -1874,6 +2243,21 @@ local function GerarLuau(programa, opcoes)
 				if gui then return "UDim2.fromOffset(" .. numeroLua(v.x) .. ", " .. numeroLua(v.y) .. ")" end
 				return "Vector3.new(" .. numeroLua(v.x) .. ", " .. numeroLua(v.y) .. ", " .. numeroLua(v.z or 0) .. ")"
 			end
+			if v.t == "interp" then
+				local out = {}
+				for _, p in ipairs(v.partes or {}) do
+					if p.lit then
+						local s = p.lit:gsub("\\", "\\\\"):gsub("`", "\\`")
+							:gsub("{", "\\{"):gsub("}", "\\}")
+						table.insert(out, s)
+					else
+						local e = legadoLua(p.expr, nil, gui)
+						if not e then return nil end
+						table.insert(out, "{" .. e .. "}")
+					end
+				end
+				return "`" .. table.concat(out) .. "`"
+			end
 			return nil
 		end
 		if type(v) ~= "string" then return nil end
@@ -1883,11 +2267,11 @@ local function GerarLuau(programa, opcoes)
 		local cores = { white = "Color3.new(1, 1, 1)", preto = "Color3.new(0, 0, 0)", black = "Color3.new(0, 0, 0)", branco = "Color3.new(1, 1, 1)" }
 		if cores[l] and (prop == "cor" or prop == "cor_texto" or prop == "cor_borda" or prop == "fundo") then return cores[l] end
 		if prop == "material" then
-			local materiais = { grama = "Grass", concreto = "Concrete", madeira = "Wood", metal = "Metal", vidro = "Glass", plastico = "Plastic", areia = "Sand", agua = "Water", pedra = "Slate", gelo = "Ice" }
+			local materiais = MATERIAIS_PT
 			return "Enum.Material." .. (materiais[l] or v)
 		end
 		if prop == "fonte" then
-			local fontes = { arial = "Arial", gothic = "Gotham", gotham = "Gotham", code = "Code", cartoony = "Cartoon", cartoon = "Cartoon", sci_fi = "SciFi", scifi = "SciFi", fantasy = "Fantasy" }
+			local fontes = FONTES_PT
 			return "Enum.Font." .. (fontes[l] or v)
 		end
 		return textoLua(v)
@@ -2029,7 +2413,7 @@ local function GerarLuau(programa, opcoes)
 	for _, nome in ipairs(sortearNomes) do table.insert(nomesTemporarios, nome) end
 	if #nomesTemporarios > 0 then table.insert(inicializadores, "local " .. table.concat(nomesTemporarios, ", ")) end
 	for _, nome in ipairs(nomesOrdenados(programa.objetos)) do
-		local var = nomeInterno("_dados_", nome)
+		local var = nomeInterno("dados_", nome)
 		if varsCriadas[var] and varsCriadas[var] ~= nome then return false, { erro = "nomes de objetos geram colisao interna: " .. nome, linha = 0 } end
 		varsCriadas[var] = nome
 		aliases[nome] = var
@@ -2045,25 +2429,27 @@ local function GerarLuau(programa, opcoes)
 	local temGui = next(programa.elementos or {}) ~= nil or next(programa.huds or {}) ~= nil or (programa.site and next(programa.site) ~= nil)
 	local hudServidor = contexto == "servidor" and next(programa.huds or {}) ~= nil
 		and next(programa.elementos or {}) == nil and (not programa.site or next(programa.site) == nil)
+	local telaNom = reservar("tela")
+	local frameRaizNom = reservar("frameRaiz")
 	if temGui then
-		servico("Players")
-		table.insert(inicializadores, 'local _tela = Instance.new("ScreenGui")')
-		table.insert(inicializadores, '_tela.Name = "Tela"')
-		table.insert(inicializadores, '_tela.ResetOnSpawn = false')
+		local players = servico("Players")
+		table.insert(inicializadores, "local " .. telaNom .. ' = Instance.new("ScreenGui")')
+		table.insert(inicializadores, telaNom .. '.Name = "Tela"')
+		table.insert(inicializadores, telaNom .. '.ResetOnSpawn = false')
 		if hudServidor then
-			table.insert(inicializadores, '_tela.Archivable = true')
+			table.insert(inicializadores, telaNom .. '.Archivable = true')
 		elseif contexto == "servidor" then
 			return false, { erro = "criar elementos de interface requer LocalScript; no servidor, use criar hud", linha = 0 }
 		else
-			table.insert(inicializadores, '_tela.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")')
+			table.insert(inicializadores, telaNom .. '.Parent = ' .. players .. '.LocalPlayer:WaitForChild("PlayerGui")')
 		end
-		table.insert(inicializadores, 'local _frameRaiz = Instance.new("Frame")')
-		table.insert(inicializadores, '_frameRaiz.Name = "Raiz"')
-		table.insert(inicializadores, '_frameRaiz.Size = UDim2.fromScale(1, 1)')
-		table.insert(inicializadores, '_frameRaiz.BackgroundTransparency = 1')
+		table.insert(inicializadores, 'local ' .. frameRaizNom .. ' = Instance.new("Frame")')
+		table.insert(inicializadores, frameRaizNom .. '.Name = "Raiz"')
+		table.insert(inicializadores, frameRaizNom .. '.Size = UDim2.fromScale(1, 1)')
+		table.insert(inicializadores, frameRaizNom .. '.BackgroundTransparency = 1')
 		local fundo = programa.site and programa.site.fundo
-		if fundo then table.insert(inicializadores, "_frameRaiz.BackgroundColor3 = " .. (legadoLua(fundo, "fundo", true) or "Color3.new(0, 0, 0)")); table.insert(inicializadores, "_frameRaiz.BackgroundTransparency = 0") end
-		table.insert(inicializadores, '_frameRaiz.Parent = _tela')
+		if fundo then table.insert(inicializadores, frameRaizNom .. ".BackgroundColor3 = " .. (legadoLua(fundo, "fundo", true) or "Color3.new(0, 0, 0)")); table.insert(inicializadores, frameRaizNom .. ".BackgroundTransparency = 0") end
+		table.insert(inicializadores, frameRaizNom .. '.Parent = ' .. telaNom)
 	end
 	local classesGui = { painel = "Frame", texto = "TextLabel", botao = "TextButton", campo = "TextBox", imagem = "ImageLabel", elemento = "Frame" }
 	local function emitirProps(var, props, gui)
@@ -2094,7 +2480,7 @@ local function GerarLuau(programa, opcoes)
 		local propsBase = def.props or {}
 		local estilo = propsBase.estilo and programa.estilos and programa.estilos[propsBase.estilo] or nil
 		local props = mesclar(estilo, propsBase)
-		local var = nomeInterno("_criado_", nome)
+		local var = nomeInterno("criado_", nome)
 		aliases[nome] = var
 		local class = classesGui[def.tipo] or "Frame"
 		table.insert(inicializadores, "local " .. var .. " = Instance.new(" .. textoLua(class) .. ")")
@@ -2107,18 +2493,18 @@ local function GerarLuau(programa, opcoes)
 		if props.cena and not cenaVisivel(props.cena) then table.insert(inicializadores, var .. ".Visible = false") end
 		emitirProps(var, props, true)
 		if props.arredondamento then
-			local corner = nomeInterno("_canto_", nome)
+			local corner = nomeInterno("canto_", nome)
 			table.insert(inicializadores, "local " .. corner .. ' = Instance.new("UICorner")')
 			table.insert(inicializadores, corner .. ".CornerRadius = UDim.new(0, " .. numeroLua(tonumber(props.arredondamento) or 8) .. ")")
 			table.insert(inicializadores, corner .. ".Parent = " .. var)
 		end
-		local pai = props.pai and aliases[props.pai] or "_frameRaiz"
+		local pai = props.pai and aliases[props.pai] or frameRaizNom
 		if props.largura or props.altura then
 			local largura = tonumber(props.largura) or 100
 			local altura = tonumber(props.altura) or 40
 			table.insert(inicializadores, var .. ".Size = UDim2.fromOffset(" .. numeroLua(largura) .. ", " .. numeroLua(altura) .. ")")
 		end
-		table.insert(inicializadores, var .. ".Parent = " .. (pai or "_frameRaiz"))
+		table.insert(inicializadores, var .. ".Parent = " .. (pai or frameRaizNom))
 	end
 	local nomesHuds = {}
 	local hudsGerados = {}
@@ -2126,7 +2512,7 @@ local function GerarLuau(programa, opcoes)
 	table.sort(nomesHuds)
 	for indice, nome in ipairs(nomesHuds) do
 		local def = programa.huds[nome]
-		local var = nomeInterno("_hud_", nome)
+		local var = nomeInterno("hud_", nome)
 		aliases[nome] = var
 		table.insert(inicializadores, 'local ' .. var .. ' = Instance.new("TextLabel")')
 		table.insert(inicializadores, var .. ".Name = " .. textoLua(nome))
@@ -2134,7 +2520,7 @@ local function GerarLuau(programa, opcoes)
 		table.insert(inicializadores, var .. ".Size = UDim2.fromOffset(240, 28)")
 		table.insert(inicializadores, var .. '.BackgroundTransparency = 1')
 		table.insert(inicializadores, var .. '.TextXAlignment = Enum.TextXAlignment.Left')
-		table.insert(inicializadores, var .. '.Parent = _frameRaiz')
+		table.insert(inicializadores, var .. '.Parent = ' .. frameRaizNom)
 		local partes = dividirCaminho(def.campo or "")
 		local expr = #partes > 1 and { k = "caminho", partes = partes } or { k = "ident", v = partes[1] or "" }
 		local valor, err = gerarValor(expr)
@@ -2146,32 +2532,43 @@ local function GerarLuau(programa, opcoes)
 		end
 	end
 	if hudServidor then
-		table.insert(inicializadores, "local _criarHUD = function(_jogador)")
-		table.insert(inicializadores, "\tlocal _telaJogador = _tela:Clone()")
-		table.insert(inicializadores, "\t_telaJogador.Parent = _jogador:WaitForChild(\"PlayerGui\")")
+		local criarHud = reservar("criarHud")
+		local jogador = reservar("jogador")
+		local telaJogador = reservar("telaJogador")
+		table.insert(inicializadores, "local " .. criarHud .. " = function(" .. jogador .. ")")
+		table.insert(inicializadores, "\tlocal " .. telaJogador .. " = " .. telaNom .. ":Clone()")
+		table.insert(inicializadores, "\t" .. telaJogador .. ".Parent = " .. jogador .. ':WaitForChild("PlayerGui")')
 		table.insert(inicializadores, "\ttask.spawn(function()")
-		table.insert(inicializadores, "\t\twhile _telaJogador.Parent do")
+		table.insert(inicializadores, "\t\twhile " .. telaJogador .. ".Parent do")
 		for _, hud in ipairs(hudsGerados) do
-			local label = nomeInterno("_labelHud_", hud.nome)
-			table.insert(inicializadores, "\t\t\tlocal " .. label .. " = _telaJogador:FindFirstChild(" .. textoLua(hud.nome) .. ", true)")
+			local label = nomeInterno("labelHud_", hud.nome)
+			table.insert(inicializadores, "\t\t\tlocal " .. label .. " = " .. telaJogador .. ":FindFirstChild(" .. textoLua(hud.nome) .. ", true)")
 			table.insert(inicializadores, "\t\t\tif " .. label .. " then " .. label .. ".Text = " .. textoLua(hud.nome .. ": ") .. " .. tostring(" .. hud.valor .. ") end")
 		end
 		table.insert(inicializadores, "\t\t\ttask.wait(0.1)")
 		table.insert(inicializadores, "\t\tend")
 		table.insert(inicializadores, "\tend)")
 		table.insert(inicializadores, "end")
-		table.insert(inicializadores, "for _, _jogador in ipairs(Players:GetPlayers()) do _criarHUD(_jogador) end")
-		table.insert(inicializadores, "Players.PlayerAdded:Connect(_criarHUD)")
+		table.insert(inicializadores, "for _, " .. jogador .. " in ipairs(" .. servico("Players") .. ":GetPlayers()) do " .. criarHud .. "(" .. jogador .. ") end")
+		table.insert(inicializadores, servico("Players") .. ".PlayerAdded:Connect(" .. criarHud .. ")")
 	end
-	local classesForma = { bloco = "Block", paralelepipedo = "Block", plataforma = "Block", esfera = "Ball", cilindro = "Cylinder", cunha = "Wedge" }
+	local classesForma = {
+		bloco = "Block", paralelepipedo = "Block", plataforma = "Block",
+		caixa = "Block", cubo = "Block", quadrado = "Block",
+		esfera = "Ball", bola = "Ball", circulo = "Ball",
+		cilindro = "Cylinder", tubo = "Cylinder",
+		cunha = "Wedge", rampa = "Wedge", inclinado = "Wedge",
+		canto = "CornerWedge", borda = "CornerWedge", quina = "CornerWedge",
+	}
 	local nomesForma = {}
 	for nome in pairs(programa.formas or {}) do table.insert(nomesForma, nome) end
 	table.sort(nomesForma)
 	for _, nome in ipairs(nomesForma) do
 		local def = programa.formas[nome]
 		local props = def.props or {}
-		local var = nomeInterno("_criado_", nome)
+		local var = nomeInterno("criado_", nome)
 		aliases[nome] = var
+		local workspace = servico("Workspace")
 		table.insert(inicializadores, 'local ' .. var .. ' = Instance.new("Part")')
 		table.insert(inicializadores, var .. ".Name = " .. textoLua(nome))
 		table.insert(inicializadores, var .. ".Shape = Enum.PartType." .. (classesForma[def.tipo] or "Block"))
@@ -2183,19 +2580,18 @@ local function GerarLuau(programa, opcoes)
 			table.insert(inicializadores, var .. ".CanCollide = false")
 		end
 		emitirProps(var, props, false)
-		table.insert(inicializadores, var .. ".Parent = Workspace")
-		servico("Workspace")
+		table.insert(inicializadores, var .. ".Parent = " .. workspace)
 	end
 	if next(programa.mundo or {}) ~= nil then
 		local mundo = programa.mundo
-		servico("Lighting")
+		local lighting = servico("Lighting")
 		local ordemMundo = { "ceu", "neblina", "neblina_inicio", "neblina_fim" }
 		local mapeia = { ceu = "ColorShift_Top", neblina = "FogColor", neblina_inicio = "FogStart", neblina_fim = "FogEnd" }
 		for _, chave in ipairs(ordemMundo) do
 			local prop = mapeia[chave]
 			if mundo[chave] ~= nil then
 				local valor = legadoLua(mundo[chave], chave, false)
-				if valor then table.insert(inicializadores, "Lighting." .. prop .. " = " .. valor) end
+				if valor then table.insert(inicializadores, lighting .. "." .. prop .. " = " .. valor) end
 			end
 		end
 		if mundo.sol then table.insert(inicializadores, "Lighting.ClockTime = 12") end
@@ -2237,6 +2633,12 @@ local function GerarLuau(programa, opcoes)
 					.. "(`quando " .. ev.sujeito .. " " .. ev.tipo .. "`)", linha = 0 }
 			end
 			table.insert(eventos, { tipo = "inline", corpo = ev.corpo })
+		elseif ev.tipo == "apertar_tecla" or ev.tipo == "soltar_tecla" then
+			if not ev.tecla then
+				return false, { erro = "evento `" .. ev.tipo .. "` precisa de uma tecla", linha = 0 }
+			end
+			table.insert(eventos, { tipo = "tecla", acao = ev.tipo,
+				tecla = codigoTecla(ev.tecla), corpo = ev.corpo })
 		else
 			local info = EVENTOS[ev.tipo]
 			if not info then
@@ -2376,7 +2778,7 @@ local function GerarLuau(programa, opcoes)
 	for _, nome in ipairs(nomesAcoes) do
 		local fn = funcoesDef["acao:" .. nome]
 		local anterior = alvoEvento
-		alvoEvento = "_acaoAlvo"
+		alvoEvento = "acaoAlvo"
 		local funcaoAnterior = dentroFuncao
 		dentroFuncao = true
 		local corpo, err = gerarCorpoComLocais(programa.acoes[nome], 1, function()
@@ -2385,7 +2787,7 @@ local function GerarLuau(programa, opcoes)
 		dentroFuncao = funcaoAnterior
 		alvoEvento = anterior
 		if not corpo then return false, { erro = "acao `" .. nome .. "`: " .. tostring(err), linha = 0 } end
-		local bloco = { fn .. " = function(_acaoAlvo)" }
+		local bloco = { fn .. " = function(" .. reservar("acaoAlvo") .. ")" }
 		for _, linha in ipairs(corpo) do table.insert(bloco, linha) end
 		table.insert(bloco, "end")
 		table.insert(blocosDef, bloco)
@@ -2438,8 +2840,30 @@ local function GerarLuau(programa, opcoes)
 	end
 
 	for _, ev in ipairs(eventos) do
-		if ev.tipo == "connect" then
-			local arg = ev.info.argumento and "_alvo" or ""
+		if ev.tipo == "tecla" then
+			-- evento de teclado: UserInputService.InputBegan / InputEnded
+			local uis = servico("UserInputService")
+			local conexao = ev.acao == "apertar_tecla" and "InputBegan" or "InputEnded"
+			local entrada = reservar("entrada")
+			local eventoAnterior = eventoAtual
+			eventoAtual = { tipo = ev.acao, alvo = nil }
+			local funcaoAnterior = dentroFuncao
+			dentroFuncao = true
+			local corpo, err = gerarCorpoComLocais(ev.corpo, 1, function()
+				return gerarCorpo(ev.corpo, 0)
+			end, "evento " .. ev.acao)
+			dentroFuncao = funcaoAnterior
+			eventoAtual = eventoAnterior
+			if not corpo then return false, { erro = err, linha = 0 } end
+			local bloco = {}
+			table.insert(bloco, uis .. "." .. conexao .. ":Connect(function(" .. entrada .. ")")
+			table.insert(bloco, "\tif " .. entrada .. ".KeyCode ~= Enum.KeyCode."
+				.. ev.tecla .. " then return end")
+			for _, linha in ipairs(corpo) do table.insert(bloco, linha) end
+			table.insert(bloco, "end)")
+			table.insert(blocos, bloco)
+		elseif ev.tipo == "connect" then
+			local arg = ev.info.argumento and reservar("alvo") or ""
 			local repete = ev.info.repete == true
 			local corpo, err
 			local anterior = alvoEvento
@@ -2462,33 +2886,37 @@ local function GerarLuau(programa, opcoes)
 
 			local bloco = {}
 			local ind = repete and "\t" or ""
+			local ultimoToque = reservar("ultimoToque")
 			if repete then
 				-- ultimoToque vive num escopo proprio: cada evento tem o dele
 				table.insert(bloco, "do")
-				table.insert(bloco, "\tlocal _ultimoToque = 0")
+				table.insert(bloco, "\tlocal " .. ultimoToque .. " = 0")
 			end
 			table.insert(bloco, ind .. ev.ref .. "." .. ev.info.evento
 				.. ":Connect(function(" .. arg .. ")")
 			if repete and ev.sujeito then
 				-- mesma ordem do Runtime legado: primeiro o sujeito, depois o
 				-- debounce -- um toque que nao e do sujeito nao consome a janela
-				table.insert(bloco, "\t\tlocal _personagem = _alvo:FindFirstAncestorOfClass(\"Model\")")
+				local personagem = reservar("personagem")
+				table.insert(bloco, "\t\tlocal " .. personagem .. " = " .. arg .. ":FindFirstAncestorOfClass(\"Model\")")
 				if ev.sujeito.tipo == "logico" then
-					table.insert(bloco, "\t\tif not (_personagem and _personagem:FindFirstChildOfClass(\"Humanoid\")) then return end")
+					table.insert(bloco, "\t\tif not (" .. personagem .. " and " .. personagem .. ":FindFirstChildOfClass(\"Humanoid\")) then return end")
 				else
 					local ref = ev.sujeito.ref
-					table.insert(bloco, "\t\tlocal _doSujeito = _alvo:IsDescendantOf(" .. ref
-						.. ") or " .. ref .. ":IsDescendantOf(_alvo)")
-					table.insert(bloco, "\t\t\tor (_personagem and (_personagem:IsDescendantOf(" .. ref
-						.. ") or " .. ref .. ":IsDescendantOf(_personagem)))")
-					table.insert(bloco, "\t\tif not _doSujeito then return end")
+					local doSujeito = reservar("doSujeito")
+					table.insert(bloco, "\t\tlocal " .. doSujeito .. " = " .. arg .. ":IsDescendantOf(" .. ref
+						.. ") or " .. ref .. ":IsDescendantOf(" .. arg .. ")")
+					table.insert(bloco, "\t\t\tor (" .. personagem .. " and (" .. personagem .. ":IsDescendantOf(" .. ref
+						.. ") or " .. ref .. ":IsDescendantOf(" .. personagem .. ")))")
+					table.insert(bloco, "\t\tif not " .. doSujeito .. " then return end")
 				end
 			end
 			if repete then
-				table.insert(bloco, "\t\tlocal _agora = os.clock()")
-				table.insert(bloco, "\t\tif _agora - _ultimoToque < "
+				local agora = reservar("agora")
+				table.insert(bloco, "\t\tlocal " .. agora .. " = os.clock()")
+				table.insert(bloco, "\t\tif " .. agora .. " - " .. ultimoToque .. " < "
 					.. numeroLua(DEBOUNCE_TOQUE) .. " then return end")
-				table.insert(bloco, "\t\t_ultimoToque = _agora")
+				table.insert(bloco, "\t\t" .. ultimoToque .. " = " .. agora)
 			end
 			for _, linha in ipairs(corpo) do table.insert(bloco, linha) end
 			if repete then
@@ -2580,7 +3008,7 @@ local function GerarLuau(programa, opcoes)
 	-- local do ScreenGui quando o script vive dentro de um
 	if usadoRaiz then
 		table.insert(linhas, "")
-		table.insert(linhas, 'local _raiz = script:IsA("ScreenGui") and script '
+		table.insert(linhas, 'local ' .. reservar("raiz") .. ' = script:IsA("ScreenGui") and script '
 			.. 'or script:FindFirstAncestorWhichIsA("ScreenGui")')
 	end
 
@@ -2591,15 +3019,38 @@ local function GerarLuau(programa, opcoes)
 	if #ordem > 0 then
 		table.insert(linhas, "")
 		for _, canonico in ipairs(ordem) do
-			table.insert(linhas, 'local ' .. canonico .. ' = game:GetService("'
+			table.insert(linhas, 'local ' .. servicosUsados[canonico] .. ' = game:GetService("'
 				.. canonico .. '")')
 		end
 	end
 	for _, linha in ipairs(inicializadores) do table.insert(linhas, linha) end
+	for nomeAux in pairs(locaisAuxiliares) do
+		local chave = string.lower(nomeAux)
+		if not LOCAIS_GERADOS[chave] then
+			LOCAIS_GERADOS[chave] = true
+		end
+	end
+	local localsAux = {}
+	for nomeAux, varAux in pairs(locaisAuxiliares) do
+		table.insert(localsAux, { nomeAux, varAux })
+	end
+	table.sort(localsAux, function(a, b) return a[1] < b[1] end)
+	for _, par in ipairs(localsAux) do
+		table.insert(linhas, "local " .. par[2] .. " = nil")
+	end
 
-	-- aliases
+	-- locais do jogador local (cliente): `jogador.*`
+	if jogadorSetup then
+		table.insert(linhas, "local " .. jogadorSetup.jogador .. " = " .. jogadorSetup.players .. ".LocalPlayer")
+		table.insert(linhas, "local " .. jogadorSetup.personagem .. " = " .. jogadorSetup.jogador
+			.. ".Character or " .. jogadorSetup.jogador .. ".CharacterAdded:Wait()")
+		table.insert(linhas, "local " .. jogadorSetup.humanoide .. " = " .. jogadorSetup.personagem
+			.. ":WaitForChild(\"Humanoid\")")
+	end
+
+	-- aliases (um bloco de declaracoes, sem espaços entre elas)
+	if #declaracoes > 0 then table.insert(linhas, "") end
 	for _, d in ipairs(declaracoes) do
-		table.insert(linhas, "")
 		table.insert(linhas, "local " .. d.nome .. " = " .. d.codigo)
 	end
 

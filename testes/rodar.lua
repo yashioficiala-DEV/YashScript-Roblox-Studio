@@ -503,7 +503,6 @@ quando iniciar
     jogador.moedas += 5
 fim
 ]],
-		gera = false, -- so compilacao: usa nomes sem `usar`
 		deve = "ok",
 	},
 	{
@@ -688,6 +687,61 @@ quando clicar Botao
 fim
 ]],
 		deve = "erro",
+	},
+	{
+		nome = "Jogador no cliente (LocalPlayer e Humanoid)",
+		contexto = "cliente",
+		fonte = [[
+jogador.velocidade = 20
+jogador.pulo = 50
+jogador.vida -= 10
+print(jogador.vida)
+]],
+		deve = "ok",
+	},
+	{
+		nome = "Jogador no servidor percorre todos os jogadores",
+		contexto = "servidor",
+		fonte = [[
+jogador.velocidade = 16
+jogador.pulo = 50
+jogador.vida -= 5
+]],
+		deve = "ok",
+	},
+	{
+		nome = "Interpolacao de texto com {expressao} e chaves literais",
+		fonte = [[
+variavel nome = "mundo"
+variavel n = 3
+print("Oi {nome}, soma {(n + 2)}")
+print("chaves {{literais}} aqui")
+]],
+		deve = "ok",
+	},
+	{
+		nome = "Eventos de tecla apertar e soltar",
+		fonte = [[
+quando apertar tecla "Espaco"
+	print("pulei")
+fim
+quando soltar tecla "E"
+	print("soltei")
+fim
+]],
+		deve = "ok",
+	},
+	{
+		nome = "Enums de Material, Font e CameraType",
+		contexto = "cliente",
+		fonte = [[
+usar "Cubo" = Workspace.Cubo
+Cubo.Material = "Neon"
+usar "Texto" = Workspace.Texto
+Texto.Font = "GothamBold"
+Workspace.CurrentCamera.CameraType = "Follow"
+]],
+		deve = "ok",
 	},
 }
 

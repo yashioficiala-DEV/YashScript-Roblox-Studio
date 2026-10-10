@@ -1,5 +1,5 @@
 --[[
-  YashScript V8.1 — Plugin do Roblox Studio (editor avançado + compilador Luau direto)
+  YashScript V8.2 — Plugin do Roblox Studio (editor avançado + compilador Luau direto)
 
   NOVAS FUNCIONALIDADES DO EDITOR:
   - Auto-par de brackets: () [] {} "" ''
@@ -16,7 +16,7 @@
     3) Edite no painel avançado e clique "Gravar".
     4) O plugin faz Compilar -> GerarLuau e escreve o LUAU PURO no Source.
 
-  O Source gerado (V8.1):
+  O Source gerado (V8.2):
     - `_YashConfig` e o literal de config
     - `Runtime.executar` / `Runtime.montarMundo`
     - os marcadores `--YASHC1--` / `--YASHC2--`
@@ -38,6 +38,7 @@
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local TextService = game:GetService("TextService")
+local RunService = game:GetService("RunService")
 
 local FONTES = {
 	Compilador = HttpService:JSONDecode(@@COMPILADOR@@),
@@ -45,7 +46,7 @@ local FONTES = {
 }
 
 -- ------------------------------------------------------------------
--- DICIONÁRIO COMPLETO DA LINGUAGEM YASHSCRIPT V8.1
+-- DICIONÁRIO COMPLETO DA LINGUAGEM YASHSCRIPT V8.2
 -- ------------------------------------------------------------------
 
 local YASH_DICTIONARY = {
@@ -56,8 +57,9 @@ local YASH_DICTIONARY = {
 	["mouse_sair"] = { tipo = "evento", desc = "Mouse saiu do objeto", sintaxe = "quando mouse_sair \"Botao\"" },
 	["tocar"] = { tipo = "evento", desc = "Personagem encostou no objeto", sintaxe = "quando jogador tocar \"Moeda\"" },
 	["encostar"] = { tipo = "evento", desc = "Sinônimo de tocar", sintaxe = "quando encostar \"Objeto\"" },
-	["apertar"] = { tipo = "evento", desc = "Tecla pressionada", sintaxe = "quando apertar \"W\"" },
-	["solte"] = { tipo = "evento", desc = "Tecla solta", sintaxe = "quando solte \"W\"" },
+	["apertar"] = { tipo = "evento", desc = "Tecla pressionada", sintaxe = "quando apertar tecla \"W\"" },
+	["soltar"] = { tipo = "evento", desc = "Tecla solta", sintaxe = "quando soltar tecla \"W\"" },
+	["tecla"] = { tipo = "evento", desc = "Nome da tecla (pt/en): Espaco, E, Setas...", sintaxe = "quando apertar tecla \"Espaco\"" },
 	["iniciar"] = { tipo = "evento", desc = "Script iniciado", sintaxe = "quando iniciar" },
 	["carregar"] = { tipo = "evento", desc = "Jogo carregado", sintaxe = "quando carregar" },
 	["a cada"] = { tipo = "evento", desc = "Timer repetido", sintaxe = "a cada 1\n    print(\"tick\")\nfim" },
@@ -215,9 +217,9 @@ local YASH_DICTIONARY = {
 	["site"] = { tipo = "comando", desc = "Configura ScreenGui", sintaxe = "site { fundo = rgb(0,0,0) }" },
 	["fundo"] = { tipo = "propriedade", desc = "Background do site", sintaxe = "site { fundo = rgb(0,0,0) }" },
 
-	-- Jogador (sujeito lógico de tocar)
-	["jogador"] = { tipo = "palavra-chave", desc = "Sujeito de 'quando jogador tocar'", sintaxe = "quando jogador tocar Objeto" },
-	["player"] = { tipo = "palavra-chave", desc = "Sinônimo de jogador", sintaxe = "quando player tocar Objeto" },
+	-- Jogador (Player local no cliente; todos no servidor)
+	["jogador"] = { tipo = "palavra-chave", desc = "Player local: jogador.velocidade/vida (cliente) ou todos os jogadores (servidor)", sintaxe = "jogador.velocidade = 20" },
+	["player"] = { tipo = "palavra-chave", desc = "Sinônimo de jogador", sintaxe = "player.vida -= 10" },
 
 	-- Métodos
 	["print"] = { tipo = "funcao", desc = "Imprime no console", sintaxe = "print(\"texto\")" },
@@ -1155,11 +1157,11 @@ end
 
 local toolbar = plugin:CreateToolbar("YashScript")
 print("[YashScript] toolbar criada")
-local botaoAbrir = toolbar:CreateButton("YashScript V8.1", "Abrir o editor YashScript avançado", "rbxassetid://16955637958")
+local botaoAbrir = toolbar:CreateButton("YashScript V8.2", "Abrir o editor YashScript avançado", "rbxassetid://16955637958")
 
 local info = DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Float, false, false, 500, 700, 400, 500)
 local widget = plugin:CreateDockWidgetPluginGui("YashScriptPainel", info)
-widget.Title = "YashScript V8.1 — Editor Avançado"
+widget.Title = "YashScript V8.2 — Editor Avançado"
 
 botaoAbrir.Click:Connect(function()
 	widget.Enabled = not widget.Enabled
@@ -1219,7 +1221,7 @@ titulo.Size = UDim2.new(1, -212, 0, 24)
 titulo.Position = UDim2.new(0, 206, 0, 4)
 titulo.BackgroundColor3 = Color3.fromRGB(38, 38, 50)
 titulo.TextColor3 = COR_TEXTO
-titulo.Text = "YashScript V8.1 — Editor Avançado"
+titulo.Text = "YashScript V8.2 — Editor Avançado"
 titulo.TextSize = 14
 titulo.Font = Enum.Font.SourceSansSemibold
 titulo.Parent = root
@@ -1606,9 +1608,39 @@ task.spawn(function()
 	end
 end)
 
+-- No Play: esconde o painel e desativa o botao; no Edit: restaura
+local estadoWidgetAntesDoPlay = nil
+task.spawn(function()
+	local rodandoAntes = RunService:IsRunning()
+	while true do
+		task.wait(0.25)
+		local rodando = RunService:IsRunning()
+		if rodando ~= rodandoAntes then
+			rodandoAntes = rodando
+			pcall(function()
+				if rodando then
+					if estadoWidgetAntesDoPlay == nil then
+						estadoWidgetAntesDoPlay = widget.Enabled
+					end
+					widget.Enabled = false
+					botaoAbrir.Enabled = false
+				elseif estadoWidgetAntesDoPlay ~= nil then
+					widget.Enabled = estadoWidgetAntesDoPlay
+					estadoWidgetAntesDoPlay = nil
+					botaoAbrir.Enabled = true
+					if widget.Enabled then
+						pcall(aplicarLayout)
+						pcall(_repovoarLista)
+					end
+				end
+			end)
+		end
+	end
+end)
+
 configurarAtalhos()
 aplicarLayout = function() end -- layout fixo agora
 widget.Enabled = true
 pcall(_repovoarLista)
 setarStatus("Pronto. Editor avançado carregado.", COR_OK)
-print("[YashScript] Plugin V8.1 Advanced carregado")
+print("[YashScript] Plugin V8.2 Advanced carregado")

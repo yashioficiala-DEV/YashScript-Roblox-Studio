@@ -1,7 +1,7 @@
 ================================================================================
-YASHSCRIPT V8.0 — REFERÊNCIA DE IMPLEMENTAÇÃO
+YASHSCRIPT V8.2 — REFERÊNCIA DE IMPLEMENTAÇÃO
 ================================================================================
-Atualizado em: 2026-10-05
+Atualizado em: 2026-10-10
 Fontes principais: compilador/compilador.lua, compilador/gerador.lua,
 plugin/_modelo_plugin.lua e plugin/plugin.lua.
 
@@ -114,8 +114,9 @@ em português e viram `Destroy()`:
   Moeda.destruir()   -> Moeda:Destroy()
   Moeda.remover()    -> Moeda:Destroy()
 
-Valores de retorno de método (como T:find("b"), que devolve dois resultados)
-ainda não são suportados.
+Valores de retorno de método (como `Casa:FindFirstChild("Porta")`) podem ser
+usados como valor em expressões e atribuições. Quando o método devolve vários
+resultados, vale o primeiro.
 
 `print(expressao, ...)` aceita múltiplos argumentos e expressões completas,
 incluindo chamadas de função aninhadas; os argumentos são avaliados e enviados

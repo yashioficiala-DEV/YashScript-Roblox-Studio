@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YashWebEngine — playground 2D</title>
+  <meta name="description" content="Protótipo do YashWebEngine: motor 2D no navegador. Escreva a lógica do jogo e rode na hora.">
+  <meta name="theme-color" content="#0b0f1a">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238affc1'/%3E%3Ctext x='32' y='44' font-family='Arial' font-size='38' font-weight='bold' text-anchor='middle' fill='%2304121f'%3EY%3C/text%3E%3C/svg%3E">
+  <style>
+    :root { --bg:#0b0f1a; --panel:#111726; --panel2:#0e1420; --line:#243149; --text:#e7edfb; --muted:#8ea2c7; --accent:#8affc1; --accent2:#7aa2ff; }
+    * { box-sizing: border-box; }
+    html,body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    a { color:var(--accent2); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .wrap { max-width:1180px; margin:0 auto; padding:18px 20px 48px; }
+    header.top { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+    .brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:18px; }
+    .logo { width:30px; height:30px; border-radius:8px; background:var(--accent); color:#04121f; display:grid; place-self:center; place-items:center; font-weight:900; }
+    .tag { font-size:11px; font-weight:700; color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:2px 8px; letter-spacing:.04em; }
+    .spacer { flex:1; }
+    .layout { display:grid; grid-template-columns: 1fr 380px; gap:18px; align-items:start; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+    .stage { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; }
+    canvas { width:100%; height:auto; display:block; border-radius:10px; background:#080b13; border:1px solid var(--line); }
+    .bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+    .demos { display:flex; gap:8px; flex-wrap:wrap; }
+    button { font:inherit; color:var(--text); background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:7px 12px; cursor:pointer; }
+    button:hover { border-color:var(--accent2); }
+    button.on { background:var(--accent); color:#04121f; border-color:var(--accent); font-weight:700; }
+    button.primary { background:var(--accent2); color:#04121f; border-color:var(--accent2); font-weight:700; }
+    .hud { margin-left:auto; font-variant-numeric:tabular-nums; color:var(--muted); font-size:13px; }
+    .erro { display:none; margin-top:10px; padding:9px 11px; border:1px solid #a33; background:#2a1014; color:#ffb4b4; border-radius:9px; font:12px/1.45 ui-monospace,Consolas,monospace; white-space:pre-wrap; }
+    .side { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; }
+    .side h2 { margin:0 0 8px; font-size:14px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+    textarea { width:100%; min-height:300px; resize:vertical; background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:11px; font:12.5px/1.55 ui-monospace,Consolas,"Cascadia Code",monospace; tab-size:2; }
+    textarea:focus { outline:2px solid var(--accent2); outline-offset:0; }
+    .keys { margin:10px 0 0; padding:0; list-style:none; font-size:13px; color:var(--muted); }
+    .keys li { display:flex; gap:8px; padding:2px 0; }
+    kbd { background:var(--panel2); border:1px solid var(--line); border-bottom-width:2px; border-radius:6px; padding:1px 6px; font:12px ui-monospace,Consolas,monospace; color:var(--text); }
+    .hand { margin-top:12px; font-size:12.5px; color:var(--muted); }
+    .hand code { background:var(--panel2); border:1px solid var(--line); border-radius:5px; padding:1px 5px; color:#cfe0ff; }
+    .note { margin-top:14px; font-size:12.5px; color:var(--muted); border-left:3px solid var(--line); padding-left:10px; }
+    footer { margin-top:26px; font-size:12.5px; color:var(--muted); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="brand"><span class="logo">Y</span>YashWebEngine</span>
+    <span class="tag">protótipo v0.1</span>
+    <span class="spacer"></span>
+    <a href="./index.html">← voltar ao site</a>
+  </header>
+
+  <div class="layout">
+    <section class="stage">
+      <div class="bar">
+        <div class="demos" id="demos"></div>
+        <div class="hud" id="hud">— fps</div>
+      </div>
+      <canvas id="tela" width="900" height="520"></canvas>
+      <div class="erro" id="erro"></div>
+      <div class="note">Motor 2D em canvas: física AABB, gravidade, colisões e bônus. Os scripts abaixo rodam direto, usando a API <code>ys.*</code> (a ponte que futuramente receberá o YashScript compilado).</div>
+    </section>
+
+    <aside class="side">
+      <h2>Lógica do jogo</h2>
+      <textarea id="codigo" spellcheck="false"></textarea>
+      <div class="bar" style="margin-top:10px">
+        <button class="primary" id="rodar">Rodar</button>
+        <button id="pausar">Pausar</button>
+        <button id="restaurar">Restaurar demo</button>
+      </div>
+      <ul class="keys" id="keys"></ul>
+      <div class="hand">Disponível no script: <code>ys.tecla</code>, <code>ys.achar</code>, <code>ys.velocidade</code>, <code>ys.no_chao</code>, <code>ys.destruir</code>, <code>ys.limitar</code>, <code>ys.altura</code>, <code>ys.largura</code>.</div>
+    </aside>
+  </div>
+
+  <footer>YashWebEngine é um protótipo. Motor, física e API <code>ys.*</code> — a compilação YashScript→Luau→JS entra nas próximas fases.</footer>
+</div>
+
+<script src="assets/engine.js"></script>
+<script>
+var demos = [
+  {
+    id: "pong", nome: "Pong", largura: 900, altura: 520, fundo: "#0b0f1a", gravidade: 0,
+    chaves: [["W / S", "barra esquerda"], ["↑ / ↓", "barra direita"], ["Objetivo", "rebater a bola"]],
+    objetos: [
+      { id: "rede", tag: "rede", tipo: "rect", x: 448, y: 0, w: 4, h: 520, cor: "#1c2740", estatico: true, semColisao: true },
+      { id: "p1", tag: "p1", tipo: "rect", x: 24, y: 210, w: 16, h: 100, cor: "#7aa2ff", estatico: true },
+      { id: "p2", tag: "p2", tipo: "rect", x: 860, y: 210, w: 16, h: 100, cor: "#ff8fa3", estatico: true },
+      { id: "bola", tag: "bola", tipo: "circulo", x: 440, y: 250, w: 22, h: 22, cor: "#ffe08a", quicar: true, gravidade: false }
+    ],
+    script: [
+      "const p1 = ys.achar('p1')[0];",
+      "const p2 = ys.achar('p2')[0];",
+      "const bola = ys.achar('bola')[0];",
+      "return {",
+      "  iniciar(){ ys.velocidade(bola, 300, 180); },",
+      "  atualizar(dt){",
+      "    if (ys.tecla('w')) p1.y -= 460 * dt;",
+      "    if (ys.tecla('s')) p1.y += 460 * dt;",
+      "    if (ys.tecla('arrowup')) p2.y -= 460 * dt;",
+      "    if (ys.tecla('arrowdown')) p2.y += 460 * dt;",
+      "    p1.y = ys.limitar(p1.y, 0, ys.altura() - p1.h);",
+      "    p2.y = ys.limitar(p2.y, 0, ys.altura() - p2.h);",
+      "  }",
+      "};"
+    ].join("\n")
+  },
+  {
+    id: "plataforma", nome: "Plataforma", largura: 900, altura: 520, fundo: "#0b0f1a", gravidade: 1600,
+    chaves: [["A / D ou ← →", "andar"], ["W / ↑ / Espaço", "pular"], ["Objetivo", "subir as plataformas"]],
+    objetos: [
+      { id: "chao", tag: "chao", tipo: "rect", x: 0, y: 480, w: 900, h: 40, cor: "#2b3550", estatico: true },
+      { id: "pl1", tag: "plat", tipo: "rect", x: 150, y: 380, w: 190, h: 18, cor: "#3a4a72", estatico: true },
+      { id: "pl2", tag: "plat", tipo: "rect", x: 430, y: 300, w: 190, h: 18, cor: "#3a4a72", estatico: true },
+      { id: "pl3", tag: "plat", tipo: "rect", x: 710, y: 210, w: 160, h: 18, cor: "#3a4a72", estatico: true },
+      { id: "jogador", tag: "jogador", tipo: "rect", x: 70, y: 420, w: 34, h: 46, cor: "#8affc1" }
+    ],
+    script: [
+      "const p = ys.achar('jogador')[0];",
+      "return {",
+      "  atualizar(dt){",
+      "    let vx = 0;",
+      "    if (ys.tecla('a') || ys.tecla('arrowleft')) vx -= 240;",
+      "    if (ys.tecla('d') || ys.tecla('arrowright')) vx += 240;",
+      "    p.vx = vx;",
+      "    if ((ys.tecla('space') || ys.tecla('arrowup') || ys.tecla('w')) && ys.no_chao(p)) p.vy = -650;",
+      "  }",
+      "};"
+    ].join("\n")
+  },
+  {
+    id: "coletor", nome: "Coletor", largura: 900, altura: 520, fundo: "#0b0f1a", gravidade: 0,
+    chaves: [["A / D / W / S", "mover"], ["Setas", "mover"], ["Objetivo", "pegar as moedas"]],
+    objetos: [
+      { id: "hud", tag: "placar", tipo: "texto", x: 16, y: 12, texto: "Pontos: 0", cor: "#cfe0ff", tamanho: 22, estatico: true, semColisao: true },
+      { id: "jogador", tag: "jogador", tipo: "rect", x: 120, y: 120, w: 30, h: 30, cor: "#8affc1", gravidade: false },
+      { id: "m1", tag: "moeda", tipo: "circulo", x: 300, y: 180, w: 22, h: 22, cor: "#ffe08a", estatico: true, semColisao: true },
+      { id: "m2", tag: "moeda", tipo: "circulo", x: 520, y: 90, w: 22, h: 22, cor: "#ffe08a", estatico: true, semColisao: true },
+      { id: "m3", tag: "moeda", tipo: "circulo", x: 720, y: 300, w: 22, h: 22, cor: "#ffe08a", estatico: true, semColisao: true },
+      { id: "m4", tag: "moeda", tipo: "circulo", x: 380, y: 400, w: 22, h: 22, cor: "#ffe08a", estatico: true, semColisao: true },
+      { id: "m5", tag: "moeda", tipo: "circulo", x: 660, y: 140, w: 22, h: 22, cor: "#ffe08a", estatico: true, semColisao: true }
+    ],
+    script: [
+      "const p = ys.achar('jogador')[0];",
+      "const hud = ys.achar('placar')[0];",
+      "let pontos = 0;",
+      "return {",
+      "  colisao(a, b){",
+      "    const m = (a.tag === 'moeda') ? a : ((b.tag === 'moeda') ? b : null);",
+      "    if (m) { ys.destruir(m); pontos++; hud.texto = 'Pontos: ' + pontos; }",
+      "  },",
+      "  atualizar(dt){",
+      "    let vx = 0, vy = 0;",
+      "    if (ys.tecla('a') || ys.tecla('arrowleft')) vx -= 260;",
+      "    if (ys.tecla('d') || ys.tecla('arrowright')) vx += 260;",
+      "    if (ys.tecla('w') || ys.tecla('arrowup')) vy -= 260;",
+      "    if (ys.tecla('s') || ys.tecla('arrowdown')) vy += 260;",
+      "    ys.velocidade(p, vx, vy);",
+      "  }",
+      "};"
+    ].join("\n")
+  }
+];
+
+var canvas = document.getElementById("tela");
+var hudEl = document.getElementById("hud");
+var errEl = document.getElementById("erro");
+var codeEl = document.getElementById("codigo");
+var demosEl = document.getElementById("demos");
+var keysEl = document.getElementById("keys");
+var engine;
+var atual = null;
+
+function mostrarErro(msg) {
+  if (!msg) { errEl.style.display = "none"; errEl.textContent = ""; return; }
+  errEl.style.display = "block";
+  errEl.textContent = msg;
+}
+
+function montarBotoes() {
+  demos.forEach(function (d) {
+    var b = document.createElement("button");
+    b.textContent = d.nome;
+    b.setAttribute("data-demo", d.id);
+    b.addEventListener("click", function () { selecionar(d.id); });
+    demosEl.appendChild(b);
+  });
+}
+
+function marcarAtivo(id) {
+  Array.prototype.forEach.call(demosEl.children, function (b) {
+    b.className = b.getAttribute("data-demo") === id ? "on" : "";
+  });
+}
+
+function selecionar(id) {
+  atual = demos.filter(function (d) { return d.id === id; })[0];
+  marcarAtivo(id);
+  codeEl.value = atual.script;
+  montarChaves(atual);
+  rodar();
+}
+
+function montarChaves(d) {
+  keysEl.innerHTML = "";
+  d.chaves.forEach(function (k) {
+    var li = document.createElement("li");
+    var code = document.createElement("kbd");
+    code.textContent = k[0];
+    var span = document.createElement("span");
+    span.textContent = k[1];
+    li.appendChild(code);
+    li.appendChild(span);
+    keysEl.appendChild(li);
+  });
+}
+
+function rodar() {
+  mostrarErro("");
+  if (engine) engine.parar();
+  engine = new YashWeb.Engine(canvas);
+  engine.onTick = function (fps) { hudEl.textContent = fps + " fps"; };
+  engine.carregar(atual);
+  var hooks;
+  try {
+    hooks = new Function("ys", "engine", "objs", codeEl.value);
+    engine.script(hooks);
+  } catch (e) {
+    mostrarErro("Erro no script:\n" + (e && e.message ? e.message : String(e)));
+    return;
+  }
+  engine.iniciar();
+}
+
+document.getElementById("rodar").addEventListener("click", rodar);
+document.getElementById("pausar").addEventListener("click", function () {
+  if (!engine || !atual) return;
+  if (engine.running) { engine.parar(); hudEl.textContent = "pausado"; }
+  else { engine.iniciar(); }
+});
+document.getElementById("restaurar").addEventListener("click", function () {
+  if (!atual) return;
+  codeEl.value = atual.script;
+  rodar();
+});
+
+montarBotoes();
+selecionar("pong");
+</script>
+</body>
+</html>

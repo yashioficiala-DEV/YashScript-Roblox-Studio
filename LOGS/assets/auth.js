@@ -179,13 +179,7 @@
       fbfn = { ca: mods[1], cs: mods[2] };
       var app = mods[0].initializeApp(CFG);
       authRef = fbfn.ca.getAuth(app);
-      try {
-        dbRef = fbfn.cs.initializeFirestore(app, {
-          localCache: fbfn.cs.persistentLocalCache({ tabManager: fbfn.cs.persistentMultipleTabManager() })
-        });
-      } catch (e) {
-        dbRef = fbfn.cs.getFirestore(app);
-      }
+      dbRef = fbfn.cs.getFirestore(app);
       return fbfn.ca.setPersistence(authRef, fbfn.ca.browserLocalPersistence);
     });
   }
@@ -323,7 +317,8 @@
     atualizarPerfil: function (patch) {
       if (!usuario) return Promise.reject(new Error("Sem conta."));
       var salvo = usuarioNorm(Object.assign({}, usuario, patch || {}, { atualizadoEm: agora() }));
-      if (nuvemAtiva() && pesoJSON(salvo) > 900000) {
+      var envia = Object.assign({}, patch || {}, { atualizadoEm: salvo.atualizadoEm });
+      if (nuvemAtiva() && pesoJSON(envia) > 900000) {
         return Promise.reject(new Error("Foto e banner juntos passam do tamanho que a nuvem aceita. Use imagens menores."));
       }
       usuario = salvo;
@@ -331,7 +326,7 @@
       gravarPerfilCache(usuario.uid, usuario);
       emitir();
       if (!nuvemAtiva()) return Promise.resolve(usuario);
-      return comPrazo(fbfn.cs.setDoc(perfilRef(usuario.uid), clonar(usuario), { merge: true }), 15000, "Salvar na nuvem")
+      return comPrazo(fbfn.cs.setDoc(perfilRef(usuario.uid), clonar(envia), { merge: true }), 15000, "Salvar na nuvem")
         .then(function () { return usuario; });
     },
     listarProjetos: function () { return usuario ? (nuvemAtiva() ? fblistar() : Promise.resolve(localListar())) : Promise.resolve([]); },
@@ -488,11 +483,11 @@
       var inpBanner = el("input", { type: "file", accept: "image/png,image/jpeg", style: "display:none" });
       inpFoto.onchange = function () {
         var f = inpFoto.files && inpFoto.files[0]; if (!f) return;
-        lerImagem(f, 256, 256, "image/png", 1).then(function (d) { ed.foto = d; pintarAvatar(); }, function (e) { err.textContent = e.message; });
+        lerImagem(f, 160, 160, "image/png", 1).then(function (d) { ed.foto = d; pintarAvatar(); }, function (e) { err.textContent = e.message; });
       };
       inpBanner.onchange = function () {
         var f = inpBanner.files && inpBanner.files[0]; if (!f) return;
-        lerImagem(f, 1200, 400, "image/jpeg", 0.82).then(function (d) { ed.bannerTipo = "imagem"; ed.bannerFoto = d; pintarBanner(); radBanner(); }, function (e) { err.textContent = e.message; });
+        lerImagem(f, 900, 300, "image/jpeg", 0.7).then(function (d) { ed.bannerTipo = "imagem"; ed.bannerFoto = d; pintarBanner(); radBanner(); }, function (e) { err.textContent = e.message; });
       };
 
       var nomeInp = el("input", { class: "ys-input", type: "text", maxlength: "32", value: ed.nome });

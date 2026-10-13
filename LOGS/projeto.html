@@ -198,7 +198,6 @@
   <script src="assets/yash/vm.js"></script>
   <script src="assets/yash/index.js"></script>
   <script src="assets/yash/yash-engine-host.js"></script>
-  <script src="assets/fengari-web.js"></script>
   <script src="assets/firebase-config.js"></script>
   <script src="assets/auth.js"></script>
 <script>
@@ -212,12 +211,6 @@
     (kids || []).forEach(function (c) { if (c != null) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
     return n;
   };
-
-  var fg = window.fengari;
-  function luauApi() {
-    if (!fg || !fg.lua || !fg.lauxlib || !fg.lualib) throw new Error("O motor Luau (Fengari) não carregou. Use o modo \"YashScript (nativo)\" ou \"JavaScript\", ou recarregue a página.");
-    return { lua: fg.lua, lauxlib: fg.lauxlib, lualib: fg.lualib, to_luastring: fg.to_luastring };
-  }
 
   var canvas = document.getElementById("tela");
   var hudEl = document.getElementById("hud");
@@ -236,10 +229,9 @@
   var docksEl = document.getElementById("docks");
   var modoLabelEl = document.getElementById("modoLabel");
 
-  var engine = null, modo = "yash", ctrl = null;
+  var engine = null, modo = "yashnativo";
   var raf = 0, lastT = 0, acc = 0, frames = 0;
   var mouseX = 0, mouseY = 0;
-  var textos = null, compState = null;
   var selectedId = null, inspFields = null, inspRenderId = "__none__";
 
   var paineis = {}, zonas = {}, arrastando = null;
@@ -247,7 +239,31 @@
   var projetoId = null, projetoNome = "Projeto";
   var dirty = false, salvando = false;
 
-  var CONTEUDO_PADRAO = "";
+  var CONTEUDO_PADRAO = [
+    "criar bloco 'chao'",
+    "    posicao = (0, 300)",
+    "    tamanho = (900, 40)",
+    "    cor = rgb(60, 90, 70)",
+    "    estatico = verdadeiro",
+    "fim",
+    "",
+    "criar esfera 'bola'",
+    "    posicao = (200, 60)",
+    "    tamanho = (36, 36)",
+    "    cor = rgb(255, 120, 90)",
+    "    gravidade = verdadeiro",
+    "    restituicao = 0.6",
+    "fim",
+    "",
+    "quando iniciar",
+    "    mostrar 'Ola! Aperte espaco para impulsionar a bola.'",
+    "    seguir bola 0.2",
+    "fim",
+    "",
+    "quando apertar_tecla 'space'",
+    "    bola:impulso(140, -260)",
+    "fim",
+  ].join("\n") + "\n";
 
   var scripts = [{ nome: "jogo.yash", ativo: true, conteudo: "" }];
 
@@ -271,174 +287,10 @@
     }, function (e) { salvando = false; setStatus("falha ao salvar", "erro"); mostrarErro("Não foi possível salvar: " + (e && e.message || e)); });
   }
 
-  function runLua(L, src, label) {
-    var A = luauApi(), lua = A.lua, lauxlib = A.lauxlib, to_luastring = A.to_luastring;
-    var s = lauxlib.luaL_loadstring(L, to_luastring(src));
-    if (s !== lua.LUA_OK) throw new Error(label + ": " + lua.lua_tolstring(L, -1, 0));
-    s = lua.lua_pcall(L, 0, 0, 0);
-    if (s !== lua.LUA_OK) throw new Error("exec " + label + ": " + lua.lua_tolstring(L, -1, 0));
-  }
-
-  function carregarFontes() {
-    if (textos) return Promise.resolve(textos);
-    return Promise.all([
-      fetch("assets/runtime2d.lua").then(function (r) { if (!r.ok) throw new Error("runtime2d.lua indisponivel"); return r.text(); }),
-      fetch("assets/compilador.lua").then(function (r) { if (!r.ok) throw new Error("compilador.lua indisponivel"); return r.text(); }),
-      fetch("assets/gerador.lua").then(function (r) { if (!r.ok) throw new Error("gerador.lua indisponivel"); return r.text(); })
-    ]).then(function (arr) { textos = { runtime: arr[0], compilador: arr[1], gerador: arr[2] }; return textos; });
-  }
-
-  function mensagemErro(L, idx) {
-    var A = luauApi(), lua = A.lua, to_luastring = A.to_luastring;
-    idx = lua.lua_absindex(L, idx);
-    if (lua.lua_istable(L, idx)) {
-      lua.lua_getfield(L, idx, to_luastring("erro")); var e = lua.lua_tojsstring(L, -1); lua.lua_pop(L, 1);
-      lua.lua_getfield(L, idx, to_luastring("linha")); var n = lua.lua_tonumber(L, -1); lua.lua_pop(L, 1);
-      return (n ? "linha " + n + ": " : "") + (e || "erro desconhecido");
-    }
-    var s = lua.lua_tojsstring(L, idx);
-    return s || "erro de compilacao";
-  }
-
-  function compilar(fonte) {
-    var A = luauApi(), lua = A.lua, lauxlib = A.lauxlib, lualib = A.lualib, to_luastring = A.to_luastring;
-    var L = compState;
-    if (!L) {
-      L = lauxlib.luaL_newstate(); lualib.luaL_openlibs(L);
-      runLua(L, textos.compilador.replace(/^return Compilador$/m, "_G.Compilador = Compilador"), "compilador");
-      runLua(L, textos.gerador.replace(/^return Gerador$/m, "_G.Gerador = Gerador"), "gerador");
-      compState = L;
-    }
-    lua.lua_getglobal(L, to_luastring("Compilador"));
-    lua.lua_getfield(L, -1, to_luastring("Compilar"));
-    lua.lua_pushstring(L, to_luastring(fonte));
-    lua.lua_newtable(L);
-    var s = lua.lua_pcall(L, 2, 2, 0);
-    if (s !== lua.LUA_OK) throw new Error("compilacao: " + lua.lua_tolstring(L, -1, 0));
-    var ok = lua.lua_toboolean(L, -2);
-    var programa = lua.lua_absindex(L, -1);
-    if (!ok) { var e1 = mensagemErro(L, programa); lua.lua_pop(L, 2); throw new Error("YashScript inválido — " + e1); }
-    lua.lua_getglobal(L, to_luastring("Gerador"));
-    lua.lua_getfield(L, -1, to_luastring("GerarLuau"));
-    lua.lua_pushvalue(L, programa);
-    lua.lua_newtable(L);
-    lua.lua_pushstring(L, to_luastring("contexto"));
-    lua.lua_pushstring(L, to_luastring("comum"));
-    lua.lua_settable(L, -3);
-    s = lua.lua_pcall(L, 2, 2, 0);
-    if (s !== lua.LUA_OK) throw new Error("gerador: " + lua.lua_tolstring(L, -1, 0));
-    var gok = lua.lua_toboolean(L, -2);
-    if (!gok) { var e2 = lua.lua_tojsstring(L, -1); lua.lua_pop(L, 2); throw new Error("falha ao gerar Luau: " + e2); }
-    var luau = lua.lua_tojsstring(L, -1);
-    lua.lua_settop(L, 0);
-    return luau;
-  }
-
-  function criarRuntime(eng) {
-    var A = luauApi(), lua = A.lua, lauxlib = A.lauxlib, lualib = A.lualib, to_luastring = A.to_luastring;
-    var L = lauxlib.luaL_newstate();
-    lualib.luaL_openlibs(L);
-    var realId = 0, porId = {};
-    function gs(L, i) { return lua.lua_tojsstring(L, i); }
-    function num(L, i) { return lua.lua_tonumber(L, i); }
-    function rgb(r, g, b) {
-      function h(x) { x = Math.max(0, Math.min(255, Math.round((x || 0) * 255))); return ("0" + x.toString(16)).slice(-2); }
-      return "#" + h(r) + h(g) + h(b);
-    }
-    function novoObj(props) { var o = Object.assign({ vx: 0, vy: 0, estatico: false }, props); eng.objs.push(o); return o; }
-    function reg(name, fn) { lua.lua_pushcfunction(L, fn); lua.lua_setfield(L, -2, to_luastring(name)); }
-
-    lua.lua_newtable(L);
-    var TIPOS = { ret: "retangulo", rect: "retangulo", retangulo: "retangulo", circ: "circulo", circulo: "circulo", tri: "triangulo", triangulo: "triangulo", poli: "poligono", poligono: "poligono", linha: "linha", texto: "texto", sprite: "sprite" };
-    reg("criar", function (L) {
-      var id = ++realId;
-      var o = novoObj({ id: id, tipo: TIPOS[gs(L, 1)] || "retangulo", x: num(L, 2), y: num(L, 3), w: num(L, 4), h: num(L, 5), cor: rgb(num(L, 6), num(L, 7), num(L, 8)), alpha: num(L, 9) });
-      porId[id] = o; lua.lua_pushnumber(L, id); return 1;
-    });
-    reg("pos", function (L) { var o = porId[num(L, 1)]; if (o) { o.x = num(L, 2); o.y = num(L, 3); } return 0; });
-    reg("tam", function (L) { var o = porId[num(L, 1)]; if (o) { o.w = num(L, 2); o.h = num(L, 3); } return 0; });
-    reg("cor", function (L) { var o = porId[num(L, 1)]; if (o) { o.cor = rgb(num(L, 2), num(L, 3), num(L, 4)); if (num(L, 5) != null) o.alpha = num(L, 5); } return 0; });
-    reg("alpha", function (L) { var o = porId[num(L, 1)]; if (o) o.alpha = num(L, 2); return 0; });
-    reg("forma", function (L) { var o = porId[num(L, 1)]; if (o) o.tipo = TIPOS[gs(L, 2)] || o.tipo; return 0; });
-    reg("rot", function (L) { var o = porId[num(L, 1)]; if (o) o.rot = num(L, 2); return 0; });
-    reg("visivel", function (L) { var o = porId[num(L, 1)]; if (o) o.visivel = lua.lua_toboolean(L, 2); return 0; });
-    reg("texto", function (L) { var o = porId[num(L, 1)]; if (o) { o.tipo = "texto"; o.texto = gs(L, 2); o.tamanho = num(L, 3); } return 0; });
-    reg("rotulo", function (L) { var o = porId[num(L, 1)]; if (o) { o.texto = gs(L, 2); if (num(L, 3) != null) o.tamanho = num(L, 3); } return 0; });
-    reg("corTexto", function (L) { var o = porId[num(L, 1)]; if (o) { o.corTexto = rgb(num(L, 2), num(L, 3), num(L, 4)); if (num(L, 5) != null) o.alphaTexto = num(L, 5); } return 0; });
-    reg("nome", function (L) { var o = porId[num(L, 1)]; if (o) o.nome = gs(L, 2); return 0; });
-    reg("estatico", function (L) { var o = porId[num(L, 1)]; if (o) o.estatico = lua.lua_toboolean(L, 2); return 0; });
-    reg("sem_colisao", function (L) { var o = porId[num(L, 1)]; if (o) o.semColisao = lua.lua_toboolean(L, 2); return 0; });
-    reg("espaco", function (L) { var o = porId[num(L, 1)]; if (o) o.espaco = gs(L, 2); return 0; });
-    reg("z", function (L) { var o = porId[num(L, 1)]; if (o) o.z = num(L, 2); return 0; });
-    reg("imagem", function (L) { var o = porId[num(L, 1)]; if (o) { o.tipo = "sprite"; eng.imagem(o, gs(L, 2)); } return 0; });
-    reg("pontos", function (L) {
-      var o = porId[num(L, 1)]; if (!o) return 0;
-      var n = num(L, 2), pts = [];
-      for (var i = 0; i < n; i++) pts.push([num(L, 3 + i * 2), num(L, 4 + i * 2)]);
-      o.pontos = pts; o.tipo = "poligono"; return 0;
-    });
-    reg("espessura", function (L) { var o = porId[num(L, 1)]; if (o) o.espessura = num(L, 2); return 0; });
-    reg("gravidade", function (L) { var o = porId[num(L, 1)]; if (o) o.gravidade = lua.lua_toboolean(L, 2); return 0; });
-    reg("friccao", function (L) { var o = porId[num(L, 1)]; if (o) o.friccao = num(L, 2); return 0; });
-    reg("restituicao", function (L) { var o = porId[num(L, 1)]; if (o) { o.restituicao = num(L, 2); o.quicar = num(L, 2) > 0; } return 0; });
-    reg("velocidade", function (L) { var o = porId[num(L, 1)]; if (o) { o.vx = num(L, 2); o.vy = num(L, 3); } return 0; });
-    reg("impulso", function (L) { var o = porId[num(L, 1)]; if (o) { o.vx += num(L, 2); o.vy += num(L, 3); } return 0; });
-    reg("no_chao", function (L) { var o = porId[num(L, 1)]; lua.lua_pushboolean(L, !!(o && o.noChao)); return 1; });
-    reg("sobreposicao", function (L) { var a = porId[num(L, 1)], b = porId[num(L, 2)]; lua.lua_pushboolean(L, !!(a && b && YashWeb.aabb(a, b))); return 1; });
-    reg("remover", function (L) { var o = porId[num(L, 1)]; if (o) o._dead = true; return 0; });
-    reg("mundo", function (L) { eng.mundo(num(L, 1), num(L, 2)); return 0; });
-    reg("camera", function (L) { eng.camera.x = num(L, 1); eng.camera.y = num(L, 2); if (num(L, 3) != null) eng.camera.zoom = num(L, 3); return 0; });
-    reg("camera_seguir", function (L) { eng.camera.alvo = porId[num(L, 1)] || null; return 0; });
-    reg("camera_zoom", function (L) { eng.camera.zoom = num(L, 1); return 0; });
-    reg("tocar", function (L) { var id = eng.audio.tocar(gs(L, 1), num(L, 2), lua.lua_toboolean(L, 3)); if (id) lua.lua_pushnumber(L, id); else lua.lua_pushnil(L); return 1; });
-    reg("parar_som", function (L) { eng.audio.parar(num(L, 1)); return 0; });
-    reg("mouse", function (L) { lua.lua_pushnumber(L, mouseX); lua.lua_pushnumber(L, mouseY); return 2; });
-    reg("mouse_botao", function (L) { var n = gs(L, 1) || "left"; if (n === "esquerdo") n = "left"; if (n === "direito") n = "right"; lua.lua_pushboolean(L, !!eng.input.mouse.botao[n]); return 1; });
-    reg("mouse_roda", function (L) { lua.lua_pushnumber(L, eng.input.mouse.roda); return 1; });
-    reg("toques", function (L) { lua.lua_pushnumber(L, eng.input.toques.length); return 1; });
-    reg("toque", function (L) { var t = eng.input.toques[num(L, 1) - 1]; if (t) { lua.lua_pushnumber(L, t.x); lua.lua_pushnumber(L, t.y); return 2; } lua.lua_pushnil(L); lua.lua_pushnil(L); return 2; });
-    reg("imprimir", function (L) { logar(gs(L, 1)); return 0; });
-    reg("largura", function (L) { lua.lua_pushnumber(L, eng.world.w); return 1; });
-    reg("altura", function (L) { lua.lua_pushnumber(L, eng.world.h); return 1; });
-    reg("relogio", function (L) { lua.lua_pushnumber(L, performance.now() / 1000); return 1; });
-    reg("aleatorio", function (L) { var a = num(L, 1), b = num(L, 2); lua.lua_pushnumber(L, a + Math.random() * (b - a)); return 1; });
-    reg("som", function (L) { return 0; });
-    lua.lua_setglobal(L, to_luastring("Y2D"));
-
-    runLua(L, textos.runtime.replace(/^return Runtime2D$/m, "_G.Runtime2D = Runtime2D"), "runtime");
-
-    function chamar(nome, args) {
-      lua.lua_getglobal(L, to_luastring("Runtime2D"));
-      lua.lua_getfield(L, -1, to_luastring(nome));
-      lua.lua_remove(L, -2);
-      var n = 0;
-      for (var i = 0; i < args.length; i++) {
-        var a = args[i];
-        if (typeof a === "number") lua.lua_pushnumber(L, a);
-        else if (typeof a === "boolean") lua.lua_pushboolean(L, a);
-        else lua.lua_pushstring(L, to_luastring(String(a)));
-        n++;
-      }
-      var s = lua.lua_pcall(L, n, 0, 0);
-      if (s !== lua.LUA_OK) throw new Error(nome + ": " + lua.lua_tolstring(L, -1, 0));
-    }
-    chamar("instalar", []);
-    return { L: L, chamar: chamar };
-  }
-
-  function mapKey(e) {
-    var code = e.code || "";
-    if (code.indexOf("Key") === 0) return code.slice(3);
-    if (code.indexOf("Digit") === 0) return ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"][+code.slice(5)] || null;
-    var m = { Space: "Space", Enter: "Return", Escape: "Escape", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Tab: "Tab", ShiftLeft: "LeftShift", ShiftRight: "RightShift", ControlLeft: "LeftControl", ControlRight: "RightControl", AltLeft: "LeftAlt", AltRight: "RightAlt" };
-    return m[code] || null;
-  }
-
   function parar() {
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
     if (engine && modo === "js") engine.parar();
-    ctrl = null;
   }
 
   function loop(t) {
@@ -448,15 +300,12 @@
     if (dt > 1 / 30) dt = 1 / 30;
     acc += dt; frames++;
     if (acc >= 0.5) { hudEl.textContent = Math.round(frames / acc) + " fps"; acc = 0; frames = 0; }
-    if (modo === "yash") {
-      try { if (ctrl) ctrl.chamar("passo", [dt]); }
-      catch (e) { mostrarErro(String(e && e.message || e)); parar(); return; }
-    } else if (modo === "yashnativo") {
+    if (modo === "yashnativo") {
       try { passoNativo(dt); }
       catch (e) { mostrarErro(formatarErro(e)); parar(); return; }
     }
     engine.update(dt);
-    if (modo === "yash" || modo === "yashnativo") { renderArvore(); renderInspector(false); }
+    if (modo === "yashnativo") { renderArvore(); renderInspector(false); }
     raf = requestAnimationFrame(loop);
   }
 
@@ -467,18 +316,6 @@
     engine.input.atach();
     lastT = 0; acc = 0; frames = 0;
     return engine;
-  }
-
-  function rodarYash() {
-    mostrarErro(""); limparLog();
-    parar();
-    var luau;
-    try { luau = compilar(codeEl.value); }
-    catch (e) { mostrarErro(String(e && e.message || e)); return; }
-    novoMotor({ largura: 900, altura: 520, fundo: "#0b0f1a", gravidade: 0 });
-    try { ctrl = criarRuntime(engine); ctrl.chamar("rodar", [luau]); }
-    catch (e) { mostrarErro(String(e && e.message || e)); return; }
-    if (!raf) raf = requestAnimationFrame(loop);
   }
 
   function rodarJS() {
@@ -573,10 +410,7 @@
   }
 
   function rodar() {
-    if (modo === "yash") {
-      carregarFontes().then(function () { rodarYash(); }, function (e) { mostrarErro(String(e && e.message || e)); });
-    } else if (modo === "yashnativo") { rodarNativo(); }
-    else { rodarJS(); }
+    if (modo === "js") { rodarJS(); } else { rodarNativo(); }
   }
 
   function pausarAcao() {
@@ -747,12 +581,10 @@
 
   function definirModo(m) {
     modo = m; parar();
-    modoLabelEl.textContent = m === "js" ? "JavaScript" : (m === "yashnativo" ? "YashScript (nativo)" : "YashScript");
+    modoLabelEl.textContent = m === "js" ? "JavaScript" : "YashScript";
     noteEl.innerHTML = m === "js"
-      ? "Modo <b>JavaScript</b>: a lógica usa a API <code>ys.*</code> do motor direto (modo opcional)."
-      : (m === "yashnativo"
-        ? "Modo <b>YashScript (nativo)</b>: interpretado pela engine nativa (YashLang + canvas), <b>sem Fengari nem runtime Roblox</b>."
-        : "Modo <b>YashScript</b>: o editor é compilado pelo compilador real (YashScript → Luau) e executado num runtime Roblox-lite 2D, desenhado pelo motor de canvas.");
+      ? "Modo <b>JavaScript</b>: a lógica usa a API <code>ys.*</code> do motor direto (para quem quer controle fino)."
+      : "Modo <b>YashScript</b>: interpretado pelo motor nativo do navegador, <b>sem Fengari, sem Luau e sem Roblox</b>.";
     mostrarErro(""); limparLog();
     renderArvore(); rodar();
   }
@@ -777,9 +609,8 @@
       { rot: "Aba: Inspetor", fn: function () { abrirPainel("inspetor"); } }
     ] },
     { rot: "Modo", itens: [
-      { rot: "YashScript", fn: function () { definirModo("yash"); } },
-      { rot: "YashScript (nativo)", fn: function () { definirModo("yashnativo"); } },
-      { rot: "JavaScript", fn: function () { definirModo("js"); } }
+      { rot: "YashScript", fn: function () { definirModo("yashnativo"); } },
+      { rot: "JavaScript (API do motor)", fn: function () { definirModo("js"); } }
     ] },
     { rot: "Ajuda", itens: [
       { rot: "Sobre o YashStudio", fn: function () { mostrarSobre(); } }
@@ -811,7 +642,7 @@
     var o = el("div", { class: "about-bg" });
     var c = el("div", { class: "about-card" }, [
       el("h3", { text: "YashStudio 2D" }),
-      el("p", { text: "Mini studio no navegador. A disposição dos painéis segue o estilo do Godot: as abas podem ser arrastadas entre os painéis e você escolhe onde cada uma fica. O visual segue o tema do site YashScript. Compila YashScript → Luau num runtime Roblox-lite 2D." }),
+      el("p", { text: "Mini studio no navegador. A disposição dos painéis segue o estilo do Godot: as abas podem ser arrastadas entre os painéis e você escolhe onde cada uma fica. O visual segue o tema do site YashScript. O YashScript é executado pelo interpretador nativo do navegador — sem Fengari, sem Luau e sem Roblox; a geração de Luau continua existindo só no porte do plugin Roblox." }),
       el("button", { class: "tbtn", type: "button", text: "Fechar", onclick: function () { o.remove(); } })
     ]);
     o.appendChild(c);
@@ -845,17 +676,7 @@
 
   window.addEventListener("keydown", function (e) {
     if (e.key === "F5") { e.preventDefault(); rodar(); return; }
-    if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) { e.preventDefault(); if (modo === "yash") salvar(); return; }
-    if (document.activeElement === codeEl || document.activeElement === pnomeEl) return;
-    if (modo !== "yash" || !ctrl) return;
-    var k = mapKey(e);
-    if (k) { ctrl.chamar("tecla", [k, true]); var c = e.code || ""; if (c === "Space" || c.indexOf("Arrow") === 0) e.preventDefault(); }
-  });
-  window.addEventListener("keyup", function (e) {
-    if (document.activeElement === codeEl || document.activeElement === pnomeEl) return;
-    if (modo !== "yash" || !ctrl) return;
-    var k = mapKey(e);
-    if (k) ctrl.chamar("tecla", [k, false]);
+    if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) { e.preventDefault(); salvar(); return; }
   });
 
   setInterval(function () { if (dirty) salvar(); }, 5 * 60 * 1000);
@@ -882,7 +703,7 @@
       scripts[0].conteudo = codeEl.value;
       centro.hidden = true; principal.hidden = false;
       setStatus("salvo", "ok");
-      definirModo("yash");
+      definirModo("yashnativo");
     }, function (e) { erroView(e && e.message || String(e)); });
   }
 

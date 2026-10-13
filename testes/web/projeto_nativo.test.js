@@ -53,14 +53,14 @@ ev(appJs);
 setTimeout(function () {
   var doc = win.document;
   var dbg = win.__yashDebug ? win.__yashDebug() : null;
-  ok("modo inicial yash", dbg && dbg.modo === "yash", dbg && dbg.modo);
+  ok("modo inicial yashnativo", dbg && dbg.modo === "yashnativo", dbg && dbg.modo);
 
   var codeEl = doc.getElementById("codigo");
   codeEl.value = "criar bloco 'chao'\n    posicao = (0, 250)\n    tamanho = (400, 30)\nfim\ncriar esfera 'bola'\n    posicao = (200, 100)\n    cor = rgb(255, 80, 80)\nfim\nquando iniciar\n    mover bola para (120, 40)\nfim";
 
   var itens = Array.prototype.slice.call(doc.querySelectorAll(".menu-pop button"));
-  var alvo = itens.filter(function (n) { return n.textContent.trim() === "YashScript (nativo)"; })[0];
-  ok("item de menu nativo existe", !!alvo);
+  var alvo = itens.filter(function (n) { return n.textContent.trim() === "YashScript"; })[0];
+  ok("item de menu YashScript existe", !!alvo);
   if (alvo) alvo.click();
 
   dbg = win.__yashDebug();

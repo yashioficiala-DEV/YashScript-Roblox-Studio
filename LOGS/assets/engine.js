@@ -5,6 +5,8 @@
   var GRAUS = Math.PI / 180;
   var PREVENT = { arrowleft: 1, arrowright: 1, arrowup: 1, arrowdown: 1, " ": 1 };
   var BOTOES = { 0: "left", 1: "middle", 2: "right" };
+  var Global = typeof globalThis !== "undefined" ? globalThis : (typeof self !== "undefined" ? self : null);
+  var AudioNativo = Global && typeof Global.Audio === "function" ? Global.Audio : null;
 
   function aabb(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -189,20 +191,25 @@
   Input.prototype.tecla = function (k) { return this.down.has(String(k).toLowerCase()); };
   Input.prototype.fimDoQuadro = function () { this.apertou.clear(); this.soltou.clear(); this.mouse.roda = 0; };
 
-  function Audio() { this._id = 0; this._ativos = {}; }
-  Audio.prototype.tocar = function (url, vol, loop) {
-    var A = (typeof Audio !== "undefined") ? Audio : (typeof window !== "undefined" ? window.Audio : null);
-    if (!A || !url) return null;
-    try {
-      var a = typeof A === "function" ? new A(url) : new A();
-      a.volume = vol == null ? 1 : limitar(vol, 0, 1);
-      a.loop = !!loop;
-      var p = a.play(); if (p && p.catch) p.catch(function () {});
-      var id = ++this._id; this._ativos[id] = a; return id;
-    } catch (e) { return null; }
+  function AudioSistema() { this._id = 0; this._ativos = {}; }
+  AudioSistema.prototype.tocar = function (url, vol, loop) {
+    if (!url) return null;
+    var a = this._elemento(url);
+    if (!a) return null;
+    var self = this, id = ++this._id;
+    a.volume = limitar(vol == null ? 1 : vol, 0, 1);
+    a.loop = !!loop;
+    this._ativos[id] = a;
+    a.addEventListener("ended", function () { delete self._ativos[id]; });
+    var p = a.play();
+    if (p && p.catch) p.catch(function (e) { if (typeof console !== "undefined") console.warn("audio bloqueado ou arquivo invalid:", url, e && e.name); });
+    return id;
   };
-  Audio.prototype.parar = function (id) { var a = this._ativos[id]; if (a) { try { a.pause(); } catch (e) {} delete this._ativos[id]; } };
-  Audio.prototype.pararTudo = function () { for (var k in this._ativos) this.parar(k); };
+  AudioSistema.prototype._elemento = function (url) {
+    try { return AudioNativo ? new AudioNativo(url) : null; } catch (e) { return null; }
+  };
+  AudioSistema.prototype.parar = function (id) { var a = this._ativos[id]; if (a) { try { a.pause(); } catch (e) {} delete this._ativos[id]; } };
+  AudioSistema.prototype.pararTudo = function () { for (var k in this._ativos) this.parar(k); };
 
   function Engine(canvas) {
     this.canvas = canvas;
@@ -213,7 +220,7 @@
     this.gravity = 1400;
     this.camera = { x: canvas.width / 2, y: canvas.height / 2, zoom: 1, alvo: null, suave: 0 };
     this.input = new Input();
-    this.audio = new Audio();
+    this.audio = new AudioSistema();
     this.imagens = {};
     this.hooks = {};
     this.running = false;

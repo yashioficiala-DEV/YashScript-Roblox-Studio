@@ -79,5 +79,34 @@ grupo("reinicio: novo motor sem residuos", function () {
   igual("sem entidade 'a'", achar(m2.engine, "a"), undefined);
 });
 
+grupo("audio: tocar usa o construtor nativo de som e devolve id", function () {
+  var tocados = [];
+  function FakeAudio(url) {
+    this.src = url; this.volume = 0; this.loop = false; this._fims = [];
+    this.play = function () { tocados.push(this); return Promise.resolve(); };
+    this.pause = function () { this.paused = true; };
+    this.addEventListener = function (_, fn) { this._fims.push(fn); };
+  }
+  var antes = globalThis.Audio;
+  globalThis.Audio = FakeAudio;
+  delete require.cache[path.join(base, "engine.js")];
+  var WebReal = require(path.join(base, "engine.js"));
+  var eng = new WebReal.Engine(fakeCanvas());
+  var id = eng.audio.tocar("som/pulo.mp3", 0.5, false);
+  ok("tocar devolve id", typeof id === "number" && id > 0, id);
+  igual("elemento criado com a url", tocados.length === 1 && tocados[0].src, "som/pulo.mp3");
+  igual("volume aplicado", tocados.length && tocados[0].volume, 0.5);
+  eng.audio.parar(id);
+  ok("parar pausa o elemento", tocados.length === 1 && tocados[0].paused === true, tocados.length && tocados[0].paused);
+  igual("sem audio nativo tocar devolve null", (function () {
+    globalThis.Audio = antes;
+    delete require.cache[path.join(base, "engine.js")];
+    var SemSom = require(path.join(base, "engine.js"));
+    return new SemSom.Engine(fakeCanvas()).audio.tocar("a.mp3");
+  })(), null);
+  delete require.cache[path.join(base, "engine.js")];
+  require(path.join(base, "engine.js"));
+});
+
 console.log("\n" + (total - falhas) + " ok, " + falhas + " falhas");
 process.exit(falhas ? 1 : 0);

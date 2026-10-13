@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YashScript Engine — motor web/nativo</title>
+  <meta name="description" content="A Engine YashScript roda a linguagem nativamente no navegador, sem Luau e sem Roblox: motor 2D em canvas, física, câmera, áudio e um mini studio.">
+  <meta name="theme-color" content="#0b0f1a">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238affc1'/%3E%3Ctext x='32' y='44' font-family='Arial' font-size='38' font-weight='bold' text-anchor='middle' fill='%2304121f'%3EE%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Pular para o conteúdo</a>
+
+  <header class="topbar">
+    <div class="wrap">
+      <a class="brand" href="index.html"><span class="logo">Y</span>YashScript <span class="ver">Engine</span></a>
+      <nav class="mainnav" aria-label="Seções">
+        <a href="index.html">Início</a>
+        <a href="index.html#/guia">Guia</a>
+        <a href="index.html#/referencia">Referência</a>
+        <a href="index.html#/portes">Portes</a>
+      </nav>
+      <div class="actions">
+        <a class="btn primary" href="playground.html"><span class="lbl">Abrir o Studio</span></a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="view active">
+      <div class="hero">
+        <div class="wrap">
+          <span class="pill">Porte Web &amp; Nativa · beta</span>
+          <h1>YashScript rodando no<br><span style="color:var(--accent)">navegador</span>.</h1>
+          <p class="lead">A Engine executa a linguagem <strong>nativamente</strong>: um interpretador próprio da YashScript, <strong>sem Luau</strong> e <strong>sem Roblox</strong>. Um motor 2D em canvas cuida de desenho, física, câmera e áudio — e um mini studio edita, executa e inspeciona seu código.</p>
+          <div class="cta">
+            <a class="btn primary" href="playground.html">Abrir o Studio</a>
+            <a class="btn" href="index.html#/guia">Guia da linguagem</a>
+            <a class="btn ghost" href="index.html#/portes">Todos os portes</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <span class="eyebrow">O motor</span>
+            <h2>Canvas 2D com física e câmera</h2>
+            <p>Runtime leve, sem dependências, pensado para jogos 2D e prototipagem rápida.</p>
+          </div>
+          <div class="grid cols-3">
+            <div class="card"><div class="ico">▦</div><h3>Desenho e formas</h3><p>Blocos, esferas e retângulos com cor, camadas, espaços de tela e de mundo.</p></div>
+            <div class="card"><div class="ico">↯</div><h3>Física AABB</h3><p>Colisão, resposta e integração de velocidade com gravidade configurável.</p></div>
+            <div class="card"><div class="ico">◔</div><h3>Câmera e entrada</h3><p>Movimento de câmera, teclado e mouse com eventos do tipo <code>quando apertar_tecla</code>.</p></div>
+            <div class="card"><div class="ico">♪</div><h3>Áudio</h3><p>Reprodução de sons a partir dos eventos da linguagem.</p></div>
+            <div class="card"><div class="ico">◧</div><h3>Runtime nativo</h3><p>Interpretador da YashScript em JavaScript puro — o mesmo código que compila para Luau roda aqui direto.</p></div>
+            <div class="card"><div class="ico">✦</div><h3>Mini studio</h3><p>Editor, árvore de objetos, inspetor e console no navegador.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <span class="eyebrow">Comece agora</span>
+            <h2>Abra o Studio</h2>
+            <p>Crie um projeto, escreva em português e veja rodar no canvas.</p>
+          </div>
+          <div class="cta"><a class="btn primary" href="playground.html">Abrir o Studio</a></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div>
+        <p><strong>YashScript Engine</strong> — motor web/nativo da linguagem.</p>
+        <p>Luau e Roblox são marcas da Roblox Corporation. A Engine não depende de nenhum dos dois.</p>
+      </div>
+      <div class="flinks">
+        <a href="index.html">Site</a>
+        <a href="index.html#/portes">Portes</a>
+        <a href="playground.html">Studio</a>
+        <a href="https://github.com/yashioficiala-DEV/YashScript-Roblox-Studio" target="_blank" rel="noopener">Repositório</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

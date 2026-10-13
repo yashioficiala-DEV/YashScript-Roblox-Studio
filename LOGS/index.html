@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>YashScript — linguagem em português para Roblox Studio</title>
-  <meta name="description" content="YashScript é uma linguagem de programação em português para o Roblox Studio. Escreva em português e gere Luau puro, legível e executável. Guia, referência completa e dicionário pesquisável.">
+  <title>YashScript — linguagem em português, com múltiplos portes</title>
+  <meta name="description" content="YashScript é uma linguagem de programação em português. Um mesmo código roda em portes como o Plugin do Roblox Studio (gera Luau puro) e a Engine Web/Nativa (motor 2D no navegador). Guia, referência completa e dicionário pesquisável.">
   <meta name="theme-color" content="#0b0f1a">
   <meta name="color-scheme" content="dark light">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="YashScript — programe no Roblox Studio em português">
-  <meta property="og:description" content="Escreva em português, gere Luau puro. Guia, referência completa e dicionário da linguagem.">
+  <meta property="og:title" content="YashScript — linguagem em português para Roblox Studio e Web">
+  <meta property="og:description" content="Uma linguagem, vários portes: Plugin (Luau) e Engine Web/Nativa. Guia, referência completa e dicionário da linguagem.">
   <meta property="og:locale" content="pt_BR">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235b8bff'/%3E%3Ctext x='32' y='44' font-family='Arial' font-size='38' font-weight='bold' text-anchor='middle' fill='%2304121f'%3EY%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="assets/styles.css">
+  <link rel="stylesheet" href="assets/auth.css">
 </head>
 <body>
   <a class="skip" href="#main">Pular para o conteúdo</a>
@@ -28,9 +29,11 @@
         <a href="#/tabelas">Tabelas</a>
         <a href="#/exemplos">Exemplos</a>
         <a href="#/limitacoes">Limitações</a>
+        <a href="#/portes">Portes</a>
         <a href="playground.html">Playground</a>
       </nav>
       <div class="actions">
+        <span id="ys-conta"></span>
         <button class="searchtrigger" type="button" data-search-open aria-label="Pesquisar (Ctrl+K)">
           <span aria-hidden="true">⌕</span><span class="txt">Pesquisar…</span><kbd>Ctrl K</kbd>
         </button>
@@ -50,6 +53,7 @@
       <a href="#/tabelas">Tabelas</a>
       <a href="#/exemplos">Exemplos</a>
       <a href="#/limitacoes">Limitações</a>
+      <a href="#/portes">Portes</a>
       <a href="playground.html">Playground</a>
     </div>
   </div>
@@ -60,13 +64,13 @@
     <section class="view" id="view-inicio">
       <div class="hero">
         <div class="wrap">
-          <span class="pill">V8.2 · Luau puro · open source</span>
-          <h1>Programe no Roblox&nbsp;Studio<br>em <span style="color:var(--accent)">português</span>.</h1>
-          <p class="lead">YashScript é um plugin com editor e compilador: você escreve comandos em português e ele gera <strong>Luau comum</strong> — legível, editável e pronto para rodar. Sem interpretador, sem runtime escondido.</p>
+          <span class="pill">V8.2 · uma linguagem, vários portes · open source</span>
+          <h1>Uma linguagem em português<br>para <span style="color:var(--accent)">vários alvos</span>.</h1>
+          <p class="lead">YashScript é uma linguagem de programação em português com <strong>portes independentes</strong>. Escreva uma vez e rode no <strong>Roblox&nbsp;Studio</strong> (gera Luau puro) ou na <strong>Engine&nbsp;Web/Nativa</strong> (motor 2D no navegador) — e o que vier depois.</p>
           <div class="cta">
-            <a class="btn primary" href="#/guia">Começar</a>
-            <a class="btn" href="#/referencia">Ver referência completa</a>
-            <a class="btn ghost" href="https://github.com/yashioficiala-DEV/YashScript-Roblox-Studio" target="_blank" rel="noopener">Baixar plugin</a>
+            <a class="btn primary" href="#/portes">Ver portes</a>
+            <a class="btn" href="#/guia">Começar</a>
+            <a class="btn ghost" href="#/referencia">Referência completa</a>
           </div>
           <div class="pills">
             <span class="pill">quando clicar</span>
@@ -83,14 +87,26 @@
       <div class="section">
         <div class="wrap">
           <div class="section-head">
+            <span class="eyebrow">Portes</span>
+            <h2>Um núcleo, vários alvos</h2>
+            <p>O port é a implementação da linguagem num ambiente. Hoje: o plugin do Roblox Studio e a Engine Web/Nativa.</p>
+          </div>
+          <div class="grid cols-3" id="home-portes"></div>
+          <div class="cta" style="margin-top:18px"><a class="btn" href="#/portes">Ver detalhes dos portes</a></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="wrap">
+          <div class="section-head">
             <span class="eyebrow">O que faz</span>
-            <h2>Um dialeto claro do Luau</h2>
-            <p>Cada construção em português vira a instrução Luau equivalente. O contexto (servidor, cliente ou comum) vem da classe do Script — não do texto.</p>
+            <h2>Um dialeto claro e em português</h2>
+            <p>Construções em português para variáveis, condições, laços, funções, eventos, formas e UI. Cada porte traduz o mesmo núcleo para o seu alvo.</p>
           </div>
           <div class="grid cols-3">
-            <div class="card"><div class="ico">⌨</div><h3>Português → Luau puro</h3><p>O Source gerado é Luau normal. Abra, leia, edite e versione — nada de código ofuscado ou motor interpretado.</p></div>
-            <div class="card"><div class="ico">◧</div><h3>Contexto automático</h3><p>Script é servidor, LocalScript é cliente, ModuleScript é comum. O mesmo comando se adapta ao lugar onde roda.</p></div>
-            <div class="card"><div class="ico">✦</div><h3>Gameplay e interface</h3><p>Eventos, laços, funções, tabelas, animações, formas, UI, câmera e comandos prontos como <code>causar dano</code> e <code>teleportar</code>.</p></div>
+            <div class="card"><div class="ico">⌨</div><h3>Código legível</h3><p>Escreva comandos em português: <code>quando clicar</code>, <code>criar bloco</code>, <code>rgb()</code>, <code>para cada</code>. Nada de símbolos crípticos.</p></div>
+            <div class="card"><div class="ico">◧</div><h3>Múltiplos alvos</h3><p>O mesmo núcleo da linguagem alimenta portes diferentes: o plugin gera Luau; a engine interpreta nativamente no canvas.</p></div>
+            <div class="card"><div class="ico">✦</div><h3>Gameplay e interface</h3><p>Eventos, laços, funções, tabelas, animação, formas, UI, câmera e comandos como <code>causar dano</code> e <code>teleportar</code>.</p></div>
           </div>
         </div>
       </div>
@@ -232,13 +248,27 @@ end)</code></pre>
       </div>
     </section>
 
+    <!-- ============================================================ PORTES -->
+    <section class="view" id="view-portes">
+      <div class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <span class="eyebrow">Portes</span>
+            <h2>Um núcleo, vários alvos</h2>
+            <p>A mesma linguagem, implementada em ambientes diferentes. Escolha onde rodar seu código.</p>
+          </div>
+          <div id="portes-host"></div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <footer>
     <div class="wrap">
       <div>
-        <p><strong>YashScript V8.2</strong> — linguagem em português para Roblox Studio.</p>
-        <p>Gerado o site a partir de <code>compilador.lua</code> e <code>gerador.lua</code>. Luau é marca da Roblox Corporation.</p>
+        <p><strong>YashScript V8.2</strong> — linguagem em português, com múltiplos portes.</p>
+        <p>Site gerado a partir das fontes do compilador e do motor. Luau e Roblox são marcas da Roblox Corporation.</p>
       </div>
       <div class="flinks">
         <a href="https://github.com/yashioficiala-DEV/YashScript-Roblox-Studio" target="_blank" rel="noopener">Repositório</a>
@@ -259,5 +289,18 @@ end)</code></pre>
 
   <script src="assets/data.js"></script>
   <script src="assets/app.js"></script>
+  <script src="assets/firebase-config.js"></script>
+  <script src="assets/auth.js"></script>
+  <script>
+    (function () {
+      var slot = document.getElementById("ys-conta");
+      YashUI.chip(slot, { permitirPular: true, aoProjetos: function () { location.href = "playground.html"; } });
+      YashAuth.aoPronto(function (st) {
+        if (!st.usuario && !YashAuth.pulou()) {
+          YashUI.exigirLogin({ permitirPular: true });
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

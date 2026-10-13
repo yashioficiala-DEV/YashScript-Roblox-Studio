@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Projeto — YashStudio 2D</title>
+  <meta name="description" content="Mini studio YashScript 2D no navegador. O projeto salva automaticamente a cada 5 minutos.">
+  <meta name="theme-color" content="#0b0f1a">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238affc1'/%3E%3Ctext x='32' y='44' font-family='Arial' font-size='38' font-weight='bold' text-anchor='middle' fill='%2304121f'%3EY%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/auth.css">
+  <style>
+    :root { --bg:#0b0f1a; --panel:#111726; --panel2:#0e1420; --panel3:#0f1524; --line:#243149; --line2:#2c3d5c; --text:#e7edfb; --muted:#8ea2c7; --accent:#8affc1; --accent-ink:#04121f; --accent2:#7aa2ff; --sel:rgba(122,162,255,.22); --ok:#34d399; --danger:#f87171; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { height:100%; }
+    body { margin:0; background:var(--bg); color:var(--text); font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; overflow:hidden; }
+    a { color:var(--accent2); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    button { font:inherit; color:var(--text); background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:5px 10px; cursor:pointer; }
+    button:hover { border-color:var(--accent2); }
+    button:disabled { opacity:.5; cursor:default; }
+    input { font:inherit; }
+
+    .app { height:100%; display:flex; flex-direction:column; }
+
+    .menubar { display:flex; align-items:center; gap:6px; padding:6px 10px; background:var(--panel2); border-bottom:1px solid var(--line); flex:none; }
+    .applogo { width:26px; height:26px; border-radius:8px; background:var(--accent); color:var(--accent-ink); display:grid; place-items:center; font-weight:900; font-size:15px; flex:none; }
+    .brandname { font-weight:800; margin-right:6px; }
+    .menus { display:flex; gap:2px; }
+    .menu { position:relative; }
+    .menu > button { padding:4px 9px; border-radius:7px; background:transparent; border:none; color:var(--text); font-size:12.5px; }
+    .menu > button:hover, .menu.open > button { background:var(--panel3); }
+    .menu-pop { position:absolute; top:calc(100% + 4px); left:0; z-index:60; min-width:200px; background:var(--panel); border:1px solid var(--line2); border-radius:10px; padding:5px; box-shadow:0 14px 34px rgba(0,0,0,.5); }
+    .menu-pop button { display:flex; align-items:center; width:100%; text-align:left; padding:6px 10px; background:transparent; border:none; border-radius:6px; color:var(--text); font-size:12.5px; }
+    .menu-pop button:hover { background:var(--accent2); color:var(--accent-ink); }
+    .menu-pop .mi-atalho { margin-left:auto; color:var(--muted); font-size:11px; }
+    .menu-pop button:hover .mi-atalho { color:var(--accent-ink); }
+    .menu-pop .sep { height:1px; margin:4px 3px; background:var(--line2); }
+    .mbspacer { flex:1; }
+    .pname { background:var(--panel3); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:5px 9px; font:600 12.5px system-ui; min-width:130px; max-width:240px; }
+    .status { font-size:11.5px; color:var(--muted); }
+    .status.ok { color:var(--ok); }
+    .status.erro { color:var(--danger); }
+    .tbtn { padding:5px 11px; font-size:12px; }
+    .mblink { font-size:12px; color:var(--muted); }
+    .menubar #ys-conta { display:flex; align-items:center; }
+
+    .runbar { display:flex; align-items:center; gap:10px; padding:6px 10px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap; flex:none; }
+    .seg { display:flex; gap:2px; background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:2px; }
+    .seg > button { padding:3px 12px; font-size:12px; border:none; background:transparent; color:var(--muted); border-radius:7px; }
+    .seg > button:hover { color:var(--text); }
+    .seg > button.on { background:var(--accent); color:var(--accent-ink); font-weight:700; }
+    .rb-spacer { flex:1; }
+    .rb-label { font-weight:700; font-size:12.5px; color:var(--accent); background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:4px 12px; }
+    .playbtns { display:flex; align-items:center; gap:6px; }
+    .pbtn { width:36px; height:29px; display:grid; place-items:center; font-size:13px; padding:0; }
+    .pbtn.play { color:var(--accent); border-color:var(--accent); }
+    .hud { margin-left:6px; font-variant-numeric:tabular-nums; color:var(--muted); font-size:12px; }
+
+    .docks { flex:1; min-height:0; display:grid; grid-template-columns:240px minmax(0,1fr) 292px; grid-template-rows:minmax(0,1fr) auto; gap:6px; padding:6px; }
+    .zone[data-zona="esq"] { grid-column:1; grid-row:1 / 3; }
+    .zone[data-zona="centro"] { grid-column:2; grid-row:1; }
+    .zone[data-zona="dir"] { grid-column:3; grid-row:1 / 3; }
+    .zone[data-zona="baixo"] { grid-column:2; grid-row:2; min-height:150px; max-height:230px; }
+
+    .dock { display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; min-height:0; }
+    .dock.dropalvo { outline:2px dashed var(--accent); outline-offset:-3px; }
+    .dock-tabs { display:flex; align-items:center; gap:3px; background:var(--panel2); border-bottom:1px solid var(--line); padding:4px 5px; min-height:32px; flex:none; overflow-x:auto; overflow-y:hidden; }
+    .dock-tabs:empty { display:none; }
+    .tab { display:flex; align-items:center; gap:6px; padding:4px 11px; font-size:12px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--muted); white-space:nowrap; cursor:grab; }
+    .tab:hover { background:var(--panel3); color:var(--text); }
+    .tab.on { background:var(--panel); color:var(--text); border-color:var(--line); box-shadow:inset 0 2px 0 var(--accent); font-weight:600; }
+    .tab:active { cursor:grabbing; }
+    .tdot { width:9px; height:9px; border-radius:2px; flex:none; }
+    .dock-body { position:relative; flex:1; min-height:0; overflow:hidden; }
+
+    .panel { position:absolute; inset:0; padding:6px; overflow:auto; }
+    .panel.vport { display:grid; place-items:center; padding:8px; overflow:hidden; }
+    .panel.scriptp { display:flex; padding:0; }
+    .panel.saidap { display:flex; flex-direction:column; }
+
+    #tela { width:100%; height:100%; object-fit:contain; background:#080b13; border:1px solid var(--line); border-radius:9px; }
+    textarea { flex:1; width:100%; height:100%; resize:none; background:var(--panel2); color:var(--text); border:none; padding:11px; font:12.5px/1.55 ui-monospace,Consolas,"Cascadia Code",monospace; tab-size:2; }
+    textarea:focus { outline:none; }
+
+    .erro { display:none; margin-bottom:6px; padding:7px 9px; border:1px solid #a33; background:#2a1014; color:#ffb4b4; border-radius:8px; font:11.5px/1.45 ui-monospace,Consolas,monospace; white-space:pre-wrap; }
+    .log { flex:1; min-height:50px; font:11.5px/1.5 ui-monospace,Consolas,monospace; color:#bcd0f0; }
+    .log .p { color:var(--accent); }
+
+    ul.tree { list-style:none; margin:0; padding:0; font:12px/1.7 ui-monospace,Consolas,monospace; }
+    ul.tree ul { list-style:none; margin:0; padding-left:14px; border-left:1px dashed var(--line); }
+    ul.tree .n { display:flex; align-items:center; gap:6px; padding:1px 5px; border-radius:6px; cursor:default; }
+    ul.tree .n.click { cursor:pointer; }
+    ul.tree .n.click:hover { background:var(--panel3); }
+    ul.tree .n.sel { background:var(--sel); }
+    .dot { width:9px; height:9px; border-radius:2px; background:var(--muted); flex:none; }
+    .dot.dir { background:var(--accent2); }
+    .dot.obj { background:var(--accent); border-radius:50%; }
+    .dot.script { background:#ffe08a; }
+    .dot.asset { background:#c99bff; }
+    .badge { margin-left:auto; color:var(--muted); font-size:10.5px; }
+
+    ul.keys { margin:0; padding:0; list-style:none; font-size:12px; color:var(--muted); }
+    ul.keys li { display:flex; gap:8px; padding:2px 0; }
+    kbd { background:var(--panel3); border:1px solid var(--line2); border-bottom-width:2px; border-radius:6px; padding:1px 6px; font:11.5px ui-monospace,Consolas,monospace; color:var(--text); }
+
+    .insp-head { display:flex; align-items:center; gap:6px; font-weight:700; margin:2px 2px 8px; }
+    .insp-row { display:grid; grid-template-columns:86px 1fr; align-items:center; gap:6px; padding:2px; }
+    .insp-label { color:var(--muted); font-size:11.5px; }
+    .insp-row input, .insp-row select { width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:3px 7px; font-size:12px; }
+    .insp-row input[type=checkbox] { width:auto; }
+    .insp-ro { color:var(--text); font-size:12px; }
+    .insp-swatch { width:20px; height:20px; border-radius:5px; border:1px solid var(--line2); }
+    .insp-vazio { color:var(--muted); font-size:12px; padding:8px 4px; }
+
+    .statusbar { display:flex; align-items:center; gap:10px; padding:5px 12px; background:var(--panel2); border-top:1px solid var(--line); font-size:11.5px; color:var(--muted); flex:none; }
+
+    .about-bg { position:fixed; inset:0; background:rgba(0,0,0,.55); display:grid; place-items:center; z-index:80; }
+    .about-card { background:var(--panel); border:1px solid var(--line2); border-radius:14px; padding:18px 20px; max-width:430px; box-shadow:0 14px 40px rgba(0,0,0,.5); }
+    .about-card h3 { margin:0 0 8px; }
+    .about-card p { color:var(--muted); margin:0 0 14px; }
+
+    .centro { position:fixed; inset:0; display:grid; place-items:center; text-align:center; padding:40px; color:var(--muted); }
+    .centro h2 { color:var(--text); }
+
+    @media (max-width: 1000px) {
+      .docks { grid-template-columns:1fr; grid-template-rows:none; overflow:auto; }
+      .zone[data-zona="esq"], .zone[data-zona="centro"], .zone[data-zona="dir"], .zone[data-zona="baixo"] { grid-column:1; grid-row:auto; min-height:180px; max-height:none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app" id="principal" hidden>
+  <div class="menubar">
+    <span class="applogo">Y</span>
+    <span class="brandname">YashStudio</span>
+    <nav class="menus" id="menus"></nav>
+    <span class="mbspacer"></span>
+    <input class="pname" id="pnome" type="text" maxlength="60" value="Projeto" title="Nome do projeto">
+    <span class="status" id="status"></span>
+    <button class="tbtn" id="salvar" type="button" title="Salvar (Ctrl+S)">Salvar</button>
+    <span id="ys-conta"></span>
+    <a class="mblink" href="playground.html">Projetos</a>
+  </div>
+
+  <div class="runbar">
+    <span class="rb-label" id="modoLabel">YashScript</span>
+    <span class="rb-spacer"></span>
+    <div class="playbtns">
+      <button class="pbtn play" id="rodar" type="button" title="Rodar (F5)">▶</button>
+      <button class="pbtn" id="pausar" type="button" title="Pausar/Continuar">⏸</button>
+      <button class="pbtn" id="restaurar" type="button" title="Restaurar">⟲</button>
+      <span class="hud" id="hud">— fps</span>
+    </div>
+  </div>
+
+  <div class="docks" id="docks">
+    <section class="dock zone" data-zona="esq">
+      <div class="dock-tabs" data-tabs></div>
+      <div class="dock-body" data-body>
+        <div class="panel" data-panel="arvorecenas" data-titulo="Nós" data-dot="dir"><ul class="tree" id="tree"></ul></div>
+        <div class="panel" data-panel="arquivos" data-titulo="Arquivos" data-dot="asset"><ul class="tree" id="treeArq"></ul></div>
+      </div>
+    </section>
+    <section class="dock zone" data-zona="centro">
+      <div class="dock-tabs" data-tabs></div>
+      <div class="dock-body" data-body>
+        <div class="panel vport" data-panel="cena" data-titulo="Cena" data-dot="obj"><canvas id="tela" width="900" height="520"></canvas></div>
+        <div class="panel scriptp" data-panel="script" data-titulo="jogo.yash" data-dot="script"><textarea id="codigo" spellcheck="false"></textarea></div>
+      </div>
+    </section>
+    <section class="dock zone" data-zona="dir">
+      <div class="dock-tabs" data-tabs></div>
+      <div class="dock-body" data-body>
+        <div class="panel" data-panel="inspetor" data-titulo="Inspetor" data-dot="dir"><div id="inspector"></div></div>
+      </div>
+    </section>
+    <section class="dock zone" data-zona="baixo">
+      <div class="dock-tabs" data-tabs></div>
+      <div class="dock-body" data-body>
+        <div class="panel saidap" data-panel="saida" data-titulo="Saída" data-dot="asset"><div class="erro" id="erro"></div><div class="log" id="log"></div></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="statusbar"><span id="note"></span></div>
+</div>
+
+<div class="centro" id="centro">
+  <h2 id="centro-t">Carregando projeto…</h2>
+  <p id="centro-p"></p>
+</div>
+
+  <script src="assets/engine.js"></script>
+  <script src="assets/yash/lexer.js"></script>
+  <script src="assets/yash/parser.js"></script>
+  <script src="assets/yash/vm.js"></script>
+  <script src="assets/yash/index.js"></script>
+  <script src="assets/yash/yash-engine-host.js"></script>
+  <script src="assets/fengari-web.js"></script>
+  <script src="assets/firebase-config.js"></script>
+  <script src="assets/auth.js"></script>
+<script>
+(function () {
+  var el = function (tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) for (var k in attrs) { var v = attrs[k]; if (v == null) continue;
+      if (k === "class") n.className = v; else if (k === "text") n.textContent = v;
+      else if (k.indexOf("on") === 0 && typeof v === "function") n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v); }
+    (kids || []).forEach(function (c) { if (c != null) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  };
+
+  var fg = window.fengari;
+  var lua = fg.lua, lauxlib = fg.lauxlib, lualib = fg.lualib, to_luastring = fg.to_luastring;
+
+  var canvas = document.getElementById("tela");
+  var hudEl = document.getElementById("hud");
+  var errEl = document.getElementById("erro");
+  var logEl = document.getElementById("log");
+  var codeEl = document.getElementById("codigo");
+  var treeEl = document.getElementById("tree");
+  var treeArqEl = document.getElementById("treeArq");
+  var inspectorEl = document.getElementById("inspector");
+  var noteEl = document.getElementById("note");
+  var statusEl = document.getElementById("status");
+  var pnomeEl = document.getElementById("pnome");
+  var principal = document.getElementById("principal");
+  var centro = document.getElementById("centro");
+  var menusEl = document.getElementById("menus");
+  var docksEl = document.getElementById("docks");
+  var modoLabelEl = document.getElementById("modoLabel");
+
+  var engine = null, modo = "yash", ctrl = null;
+  var raf = 0, lastT = 0, acc = 0, frames = 0;
+  var mouseX = 0, mouseY = 0;
+  var textos = null, compState = null;
+  var selectedId = null, inspFields = null, inspRenderId = "__none__";
+
+  var paineis = {}, zonas = {}, arrastando = null;
+
+  var projetoId = null, projetoNome = "Projeto";
+  var dirty = false, salvando = false;
+
+  var CONTEUDO_PADRAO = "";
+
+  var scripts = [{ nome: "jogo.yash", ativo: true, conteudo: "" }];
+
+  function mostrarErro(msg) {
+    if (!msg) { errEl.style.display = "none"; errEl.textContent = ""; return; }
+    errEl.style.display = "block"; errEl.textContent = msg;
+  }
+  function logar(s) {
+    var d = document.createElement("div"); d.className = "p"; d.textContent = s;
+    logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight;
+  }
+  function limparLog() { logEl.innerHTML = ""; }
+  function setStatus(txt, cls) { statusEl.textContent = txt || ""; statusEl.className = "status" + (cls ? " " + cls : ""); }
+  function hora() { try { return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch (e) { return ""; } }
+
+  function salvar() {
+    if (!projetoId || salvando) return;
+    salvando = true; setStatus("salvando…");
+    YashAuth.salvarProjeto(projetoId, { codigo: codeEl.value, nome: projetoNome }).then(function () {
+      salvando = false; dirty = false; setStatus("salvo às " + hora(), "ok");
+    }, function (e) { salvando = false; setStatus("falha ao salvar", "erro"); mostrarErro("Não foi possível salvar: " + (e && e.message || e)); });
+  }
+
+  function runLua(L, src, label) {
+    var s = lauxlib.luaL_loadstring(L, to_luastring(src));
+    if (s !== lua.LUA_OK) throw new Error(label + ": " + lua.lua_tolstring(L, -1, 0));
+    s = lua.lua_pcall(L, 0, 0, 0);
+    if (s !== lua.LUA_OK) throw new Error("exec " + label + ": " + lua.lua_tolstring(L, -1, 0));
+  }
+
+  function carregarFontes() {
+    if (textos) return Promise.resolve(textos);
+    return Promise.all([
+      fetch("assets/runtime2d.lua").then(function (r) { if (!r.ok) throw new Error("runtime2d.lua indisponivel"); return r.text(); }),
+      fetch("assets/compilador.lua").then(function (r) { if (!r.ok) throw new Error("compilador.lua indisponivel"); return r.text(); }),
+      fetch("assets/gerador.lua").then(function (r) { if (!r.ok) throw new Error("gerador.lua indisponivel"); return r.text(); })
+    ]).then(function (arr) { textos = { runtime: arr[0], compilador: arr[1], gerador: arr[2] }; return textos; });
+  }
+
+  function mensagemErro(L, idx) {
+    idx = lua.lua_absindex(L, idx);
+    if (lua.lua_istable(L, idx)) {
+      lua.lua_getfield(L, idx, to_luastring("erro")); var e = lua.lua_tojsstring(L, -1); lua.lua_pop(L, 1);
+      lua.lua_getfield(L, idx, to_luastring("linha")); var n = lua.lua_tonumber(L, -1); lua.lua_pop(L, 1);
+      return (n ? "linha " + n + ": " : "") + (e || "erro desconhecido");
+    }
+    var s = lua.lua_tojsstring(L, idx);
+    return s || "erro de compilacao";
+  }
+
+  function compilar(fonte) {
+    var L = compState;
+    if (!L) {
+      L = lauxlib.luaL_newstate(); lualib.luaL_openlibs(L);
+      runLua(L, textos.compilador.replace(/^return Compilador$/m, "_G.Compilador = Compilador"), "compilador");
+      runLua(L, textos.gerador.replace(/^return Gerador$/m, "_G.Gerador = Gerador"), "gerador");
+      compState = L;
+    }
+    lua.lua_getglobal(L, to_luastring("Compilador"));
+    lua.lua_getfield(L, -1, to_luastring("Compilar"));
+    lua.lua_pushstring(L, to_luastring(fonte));
+    lua.lua_newtable(L);
+    var s = lua.lua_pcall(L, 2, 2, 0);
+    if (s !== lua.LUA_OK) throw new Error("compilacao: " + lua.lua_tolstring(L, -1, 0));
+    var ok = lua.lua_toboolean(L, -2);
+    var programa = lua.lua_absindex(L, -1);
+    if (!ok) { var e1 = mensagemErro(L, programa); lua.lua_pop(L, 2); throw new Error("YashScript inválido — " + e1); }
+    lua.lua_getglobal(L, to_luastring("Gerador"));
+    lua.lua_getfield(L, -1, to_luastring("GerarLuau"));
+    lua.lua_pushvalue(L, programa);
+    lua.lua_newtable(L);
+    lua.lua_pushstring(L, to_luastring("contexto"));
+    lua.lua_pushstring(L, to_luastring("comum"));
+    lua.lua_settable(L, -3);
+    s = lua.lua_pcall(L, 2, 2, 0);
+    if (s !== lua.LUA_OK) throw new Error("gerador: " + lua.lua_tolstring(L, -1, 0));
+    var gok = lua.lua_toboolean(L, -2);
+    if (!gok) { var e2 = lua.lua_tojsstring(L, -1); lua.lua_pop(L, 2); throw new Error("falha ao gerar Luau: " + e2); }
+    var luau = lua.lua_tojsstring(L, -1);
+    lua.lua_settop(L, 0);
+    return luau;
+  }
+
+  function criarRuntime(eng) {
+    var L = lauxlib.luaL_newstate();
+    lualib.luaL_openlibs(L);
+    var realId = 0, porId = {};
+    function gs(L, i) { return lua.lua_tojsstring(L, i); }
+    function num(L, i) { return lua.lua_tonumber(L, i); }
+    function rgb(r, g, b) {
+      function h(x) { x = Math.max(0, Math.min(255, Math.round((x || 0) * 255))); return ("0" + x.toString(16)).slice(-2); }
+      return "#" + h(r) + h(g) + h(b);
+    }
+    function novoObj(props) { var o = Object.assign({ vx: 0, vy: 0, estatico: false }, props); eng.objs.push(o); return o; }
+    function reg(name, fn) { lua.lua_pushcfunction(L, fn); lua.lua_setfield(L, -2, to_luastring(name)); }
+
+    lua.lua_newtable(L);
+    var TIPOS = { ret: "retangulo", rect: "retangulo", retangulo: "retangulo", circ: "circulo", circulo: "circulo", tri: "triangulo", triangulo: "triangulo", poli: "poligono", poligono: "poligono", linha: "linha", texto: "texto", sprite: "sprite" };
+    reg("criar", function (L) {
+      var id = ++realId;
+      var o = novoObj({ id: id, tipo: TIPOS[gs(L, 1)] || "retangulo", x: num(L, 2), y: num(L, 3), w: num(L, 4), h: num(L, 5), cor: rgb(num(L, 6), num(L, 7), num(L, 8)), alpha: num(L, 9) });
+      porId[id] = o; lua.lua_pushnumber(L, id); return 1;
+    });
+    reg("pos", function (L) { var o = porId[num(L, 1)]; if (o) { o.x = num(L, 2); o.y = num(L, 3); } return 0; });
+    reg("tam", function (L) { var o = porId[num(L, 1)]; if (o) { o.w = num(L, 2); o.h = num(L, 3); } return 0; });
+    reg("cor", function (L) { var o = porId[num(L, 1)]; if (o) { o.cor = rgb(num(L, 2), num(L, 3), num(L, 4)); if (num(L, 5) != null) o.alpha = num(L, 5); } return 0; });
+    reg("alpha", function (L) { var o = porId[num(L, 1)]; if (o) o.alpha = num(L, 2); return 0; });
+    reg("forma", function (L) { var o = porId[num(L, 1)]; if (o) o.tipo = TIPOS[gs(L, 2)] || o.tipo; return 0; });
+    reg("rot", function (L) { var o = porId[num(L, 1)]; if (o) o.rot = num(L, 2); return 0; });
+    reg("visivel", function (L) { var o = porId[num(L, 1)]; if (o) o.visivel = lua.lua_toboolean(L, 2); return 0; });
+    reg("texto", function (L) { var o = porId[num(L, 1)]; if (o) { o.tipo = "texto"; o.texto = gs(L, 2); o.tamanho = num(L, 3); } return 0; });
+    reg("rotulo", function (L) { var o = porId[num(L, 1)]; if (o) { o.texto = gs(L, 2); if (num(L, 3) != null) o.tamanho = num(L, 3); } return 0; });
+    reg("corTexto", function (L) { var o = porId[num(L, 1)]; if (o) { o.corTexto = rgb(num(L, 2), num(L, 3), num(L, 4)); if (num(L, 5) != null) o.alphaTexto = num(L, 5); } return 0; });
+    reg("nome", function (L) { var o = porId[num(L, 1)]; if (o) o.nome = gs(L, 2); return 0; });
+    reg("estatico", function (L) { var o = porId[num(L, 1)]; if (o) o.estatico = lua.lua_toboolean(L, 2); return 0; });
+    reg("sem_colisao", function (L) { var o = porId[num(L, 1)]; if (o) o.semColisao = lua.lua_toboolean(L, 2); return 0; });
+    reg("espaco", function (L) { var o = porId[num(L, 1)]; if (o) o.espaco = gs(L, 2); return 0; });
+    reg("z", function (L) { var o = porId[num(L, 1)]; if (o) o.z = num(L, 2); return 0; });
+    reg("imagem", function (L) { var o = porId[num(L, 1)]; if (o) { o.tipo = "sprite"; eng.imagem(o, gs(L, 2)); } return 0; });
+    reg("pontos", function (L) {
+      var o = porId[num(L, 1)]; if (!o) return 0;
+      var n = num(L, 2), pts = [];
+      for (var i = 0; i < n; i++) pts.push([num(L, 3 + i * 2), num(L, 4 + i * 2)]);
+      o.pontos = pts; o.tipo = "poligono"; return 0;
+    });
+    reg("espessura", function (L) { var o = porId[num(L, 1)]; if (o) o.espessura = num(L, 2); return 0; });
+    reg("gravidade", function (L) { var o = porId[num(L, 1)]; if (o) o.gravidade = lua.lua_toboolean(L, 2); return 0; });
+    reg("friccao", function (L) { var o = porId[num(L, 1)]; if (o) o.friccao = num(L, 2); return 0; });
+    reg("restituicao", function (L) { var o = porId[num(L, 1)]; if (o) { o.restituicao = num(L, 2); o.quicar = num(L, 2) > 0; } return 0; });
+    reg("velocidade", function (L) { var o = porId[num(L, 1)]; if (o) { o.vx = num(L, 2); o.vy = num(L, 3); } return 0; });
+    reg("impulso", function (L) { var o = porId[num(L, 1)]; if (o) { o.vx += num(L, 2); o.vy += num(L, 3); } return 0; });
+    reg("no_chao", function (L) { var o = porId[num(L, 1)]; lua.lua_pushboolean(L, !!(o && o.noChao)); return 1; });
+    reg("sobreposicao", function (L) { var a = porId[num(L, 1)], b = porId[num(L, 2)]; lua.lua_pushboolean(L, !!(a && b && YashWeb.aabb(a, b))); return 1; });
+    reg("remover", function (L) { var o = porId[num(L, 1)]; if (o) o._dead = true; return 0; });
+    reg("mundo", function (L) { eng.mundo(num(L, 1), num(L, 2)); return 0; });
+    reg("camera", function (L) { eng.camera.x = num(L, 1); eng.camera.y = num(L, 2); if (num(L, 3) != null) eng.camera.zoom = num(L, 3); return 0; });
+    reg("camera_seguir", function (L) { eng.camera.alvo = porId[num(L, 1)] || null; return 0; });
+    reg("camera_zoom", function (L) { eng.camera.zoom = num(L, 1); return 0; });
+    reg("tocar", function (L) { var id = eng.audio.tocar(gs(L, 1), num(L, 2), lua.lua_toboolean(L, 3)); if (id) lua.lua_pushnumber(L, id); else lua.lua_pushnil(L); return 1; });
+    reg("parar_som", function (L) { eng.audio.parar(num(L, 1)); return 0; });
+    reg("mouse", function (L) { lua.lua_pushnumber(L, mouseX); lua.lua_pushnumber(L, mouseY); return 2; });
+    reg("mouse_botao", function (L) { var n = gs(L, 1) || "left"; if (n === "esquerdo") n = "left"; if (n === "direito") n = "right"; lua.lua_pushboolean(L, !!eng.input.mouse.botao[n]); return 1; });
+    reg("mouse_roda", function (L) { lua.lua_pushnumber(L, eng.input.mouse.roda); return 1; });
+    reg("toques", function (L) { lua.lua_pushnumber(L, eng.input.toques.length); return 1; });
+    reg("toque", function (L) { var t = eng.input.toques[num(L, 1) - 1]; if (t) { lua.lua_pushnumber(L, t.x); lua.lua_pushnumber(L, t.y); return 2; } lua.lua_pushnil(L); lua.lua_pushnil(L); return 2; });
+    reg("imprimir", function (L) { logar(gs(L, 1)); return 0; });
+    reg("largura", function (L) { lua.lua_pushnumber(L, eng.world.w); return 1; });
+    reg("altura", function (L) { lua.lua_pushnumber(L, eng.world.h); return 1; });
+    reg("relogio", function (L) { lua.lua_pushnumber(L, performance.now() / 1000); return 1; });
+    reg("aleatorio", function (L) { var a = num(L, 1), b = num(L, 2); lua.lua_pushnumber(L, a + Math.random() * (b - a)); return 1; });
+    reg("som", function (L) { return 0; });
+    lua.lua_setglobal(L, to_luastring("Y2D"));
+
+    runLua(L, textos.runtime.replace(/^return Runtime2D$/m, "_G.Runtime2D = Runtime2D"), "runtime");
+
+    function chamar(nome, args) {
+      lua.lua_getglobal(L, to_luastring("Runtime2D"));
+      lua.lua_getfield(L, -1, to_luastring(nome));
+      lua.lua_remove(L, -2);
+      var n = 0;
+      for (var i = 0; i < args.length; i++) {
+        var a = args[i];
+        if (typeof a === "number") lua.lua_pushnumber(L, a);
+        else if (typeof a === "boolean") lua.lua_pushboolean(L, a);
+        else lua.lua_pushstring(L, to_luastring(String(a)));
+        n++;
+      }
+      var s = lua.lua_pcall(L, n, 0, 0);
+      if (s !== lua.LUA_OK) throw new Error(nome + ": " + lua.lua_tolstring(L, -1, 0));
+    }
+    chamar("instalar", []);
+    return { L: L, chamar: chamar };
+  }
+
+  function mapKey(e) {
+    var code = e.code || "";
+    if (code.indexOf("Key") === 0) return code.slice(3);
+    if (code.indexOf("Digit") === 0) return ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"][+code.slice(5)] || null;
+    var m = { Space: "Space", Enter: "Return", Escape: "Escape", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Tab: "Tab", ShiftLeft: "LeftShift", ShiftRight: "RightShift", ControlLeft: "LeftControl", ControlRight: "RightControl", AltLeft: "LeftAlt", AltRight: "RightAlt" };
+    return m[code] || null;
+  }
+
+  function parar() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    if (engine && modo === "js") engine.parar();
+    ctrl = null;
+  }
+
+  function loop(t) {
+    if (!engine) return;
+    if (!lastT) lastT = t;
+    var dt = (t - lastT) / 1000; lastT = t;
+    if (dt > 1 / 30) dt = 1 / 30;
+    acc += dt; frames++;
+    if (acc >= 0.5) { hudEl.textContent = Math.round(frames / acc) + " fps"; acc = 0; frames = 0; }
+    if (modo === "yash") {
+      try { if (ctrl) ctrl.chamar("passo", [dt]); }
+      catch (e) { mostrarErro(String(e && e.message || e)); parar(); return; }
+    } else if (modo === "yashnativo") {
+      try { passoNativo(dt); }
+      catch (e) { mostrarErro(formatarErro(e)); parar(); return; }
+    }
+    engine.update(dt);
+    if (modo === "yash" || modo === "yashnativo") { renderArvore(); renderInspector(false); }
+    raf = requestAnimationFrame(loop);
+  }
+
+  function novoMotor(scene) {
+    if (engine) { if (engine.running) engine.parar(); }
+    engine = new YashWeb.Engine(canvas);
+    engine.carregar(scene || { largura: 900, altura: 520, fundo: "#0b0f1a", gravidade: 0 });
+    engine.input.atach();
+    lastT = 0; acc = 0; frames = 0;
+    return engine;
+  }
+
+  function rodarYash() {
+    mostrarErro(""); limparLog();
+    parar();
+    var luau;
+    try { luau = compilar(codeEl.value); }
+    catch (e) { mostrarErro(String(e && e.message || e)); return; }
+    novoMotor({ largura: 900, altura: 520, fundo: "#0b0f1a", gravidade: 0 });
+    try { ctrl = criarRuntime(engine); ctrl.chamar("rodar", [luau]); }
+    catch (e) { mostrarErro(String(e && e.message || e)); return; }
+    if (!raf) raf = requestAnimationFrame(loop);
+  }
+
+  function rodarJS() {
+    mostrarErro(""); limparLog();
+    parar();
+    novoMotor(null);
+    var hooks;
+    try { hooks = new Function("ys", "engine", "objs", codeEl.value); engine.script(hooks); }
+    catch (e) { mostrarErro("Erro no script:\n" + (e && e.message ? e.message : String(e))); return; }
+    engine.onTick = function (fps) { hudEl.textContent = fps + " fps"; };
+    engine.iniciar();
+  }
+
+  var natRt = null, natHost = null, natHover = null, natBtn = false, natColisoes = {};
+
+  function formatarErro(e) {
+    if (e && e.linha != null) return "linha " + e.linha + ": " + (e.erro != null ? e.erro : (e.message || e));
+    return String((e && e.message) || e);
+  }
+
+  function entidadeSob(x, y) {
+    if (!engine) return null;
+    var achados = engine.objs.filter(function (o) {
+      return !o._dead && o.visivel !== false && o.w > 0 && o.h > 0 &&
+        x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h;
+    });
+    achados.sort(function (a, b) {
+      var ta = a.espaco === "tela" ? 1 : 0, tb = b.espaco === "tela" ? 1 : 0;
+      if (ta !== tb) return ta - tb;
+      return (a.z || 0) - (b.z || 0);
+    });
+    return achados[achados.length - 1] || null;
+  }
+
+  function atualizarMouseNativo() {
+    if (!natRt) return;
+    var alvo = entidadeSob(mouseX, mouseY);
+    if (alvo !== natHover) {
+      if (natHover && natHover.nome) natRt.emitir("mouse_sair", natHover.nome);
+      if (alvo && alvo.nome) natRt.emitir("mouse_em", alvo.nome);
+      natHover = alvo;
+    }
+    var btn = !!(engine && engine.input && engine.input.mouse.botao.left);
+    if (btn && !natBtn && alvo && alvo.nome) natRt.emitir("clicar", alvo.nome);
+    natBtn = btn;
+  }
+
+  function atualizarColisoesNativo() {
+    if (!natRt || !engine) return;
+    var objs = engine.objs, novos = {};
+    for (var i = 0; i < objs.length; i++) {
+      var a = objs[i];
+      if (a._dead || a.semColisao || a.espaco === "tela" || a.w <= 0 || a.h <= 0) continue;
+      for (var j = i + 1; j < objs.length; j++) {
+        var b = objs[j];
+        if (b._dead || b.espaco === "tela") continue;
+        if (!YashWeb.aabb(a, b)) continue;
+        var k = a.id + ":" + b.id; novos[k] = 1;
+        if (!natColisoes[k]) {
+          if (a.nome) natRt.emitir("encostar", a.nome);
+          if (b.nome) natRt.emitir("encostar", b.nome);
+        }
+      }
+    }
+    natColisoes = novos;
+  }
+
+  function passoNativo(dt) {
+    if (!natRt || !engine) return;
+    engine.input.apertou.forEach(function (k) { natRt.emitir("apertar_tecla", k, k); });
+    engine.input.soltou.forEach(function (k) { natRt.emitir("soltar_tecla", k, k); });
+    natRt.passo(dt);
+    natRt.emitir("quadro");
+    atualizarMouseNativo();
+    atualizarColisoesNativo();
+  }
+
+  function rodarNativo() {
+    mostrarErro(""); limparLog();
+    parar();
+    var prog;
+    try { prog = YashLang.analisar(codeEl.value); }
+    catch (e) { mostrarErro(formatarErro(e)); return; }
+    novoMotor({ largura: 900, altura: 520, fundo: "#0b0f1a", gravidade: 0 });
+    natColisoes = {}; natHover = null; natBtn = false;
+    natHost = new YashEngineHost(engine, { aabb: YashWeb.aabb, registrar: function (s) { logar(s); } });
+    try { natRt = YashLang.vm.executar(prog, natHost); }
+    catch (e) { natRt = null; natHost = null; mostrarErro(formatarErro(e)); return; }
+    try { natRt.emitir("iniciar"); }
+    catch (e) { mostrarErro(formatarErro(e)); parar(); return; }
+    if (!raf) raf = requestAnimationFrame(loop);
+  }
+
+  function rodar() {
+    if (modo === "yash") {
+      carregarFontes().then(function () { rodarYash(); }, function (e) { mostrarErro(String(e && e.message || e)); });
+    } else if (modo === "yashnativo") { rodarNativo(); }
+    else { rodarJS(); }
+  }
+
+  function pausarAcao() {
+    if (modo === "js") {
+      if (!engine) return;
+      if (engine.running) { engine.parar(); hudEl.textContent = "pausado"; } else engine.iniciar();
+    } else {
+      if (raf) { cancelAnimationFrame(raf); raf = 0; hudEl.textContent = "pausado"; }
+      else if (engine) { raf = requestAnimationFrame(loop); }
+    }
+  }
+  function restaurarAcao() {
+    if (modo === "js") { rodarJS(); }
+    else { var s = scripts[0]; s.ativo = true; codeEl.value = s.conteudo || CONTEUDO_PADRAO; renderArvore(); rodar(); }
+  }
+
+  function item(rotulo, classe, badge, onclick) {
+    var li = document.createElement("li");
+    var n = document.createElement("div");
+    n.className = "n" + (onclick ? " click" : "");
+    var d = document.createElement("span"); d.className = "dot " + classe;
+    var t = document.createElement("span"); t.textContent = rotulo;
+    n.appendChild(d); n.appendChild(t);
+    if (badge) { var b = document.createElement("span"); b.className = "badge"; b.textContent = badge; n.appendChild(b); }
+    if (onclick) n.addEventListener("click", onclick);
+    li.appendChild(n); return li;
+  }
+  function ramo(rotulo, children) {
+    var li = document.createElement("li");
+    var n = document.createElement("div"); n.className = "n";
+    var d = document.createElement("span"); d.className = "dot dir";
+    var t = document.createElement("span"); t.textContent = rotulo;
+    n.appendChild(d); n.appendChild(t); li.appendChild(n);
+    if (children.length) { var ul = document.createElement("ul"); children.forEach(function (c) { ul.appendChild(c); }); li.appendChild(ul); }
+    return li;
+  }
+
+  function renderArvore() {
+    treeEl.innerHTML = "";
+    var objs = [];
+    (engine ? engine.objs : []).forEach(function (o) {
+      if (o._dead) return;
+      var rot = o.nome || (o.tag ? "#" + o.tag : String(o.id || "objeto"));
+      var node = item(rot, "obj", o.tipo, (function (obj) {
+        return function () { selectedId = obj.id; renderInspector(true); };
+      })(o));
+      if (o.id === selectedId) node.firstChild.className += " sel";
+      objs.push(node);
+    });
+    treeEl.appendChild(ramo("Workspace", objs));
+
+    treeArqEl.innerHTML = "";
+    var scr = scripts.map(function (s) {
+      return item(s.nome, "script", s.ativo ? "ativo" : "", function () {
+        scripts.forEach(function (x) { x.ativo = false; }); s.ativo = true;
+        codeEl.value = s.conteudo; renderArvore();
+        abrirPainel("script");
+      });
+    });
+    treeArqEl.appendChild(ramo("Scripts", scr));
+  }
+
+  function objSelecionado() {
+    if (selectedId == null || !engine) return null;
+    return engine.objs.filter(function (o) { return o.id === selectedId && !o._dead; })[0] || null;
+  }
+  function renderInspector(force) {
+    var o = objSelecionado();
+    if (!o) {
+      if (inspRenderId !== "__none__") { inspRenderId = "__none__"; inspFields = null; inspectorEl.innerHTML = ""; inspectorEl.appendChild(el("div", { class: "insp-vazio", text: "Nenhum nó selecionado. Clique num objeto da cena." })); }
+      return;
+    }
+    if (!force && inspRenderId === String(o.id) && inspFields) { atualizarInspector(o); return; }
+    inspRenderId = String(o.id);
+    inspectorEl.innerHTML = "";
+    inspectorEl.appendChild(el("div", { class: "insp-head" }, [el("span", { class: "dot obj" }), el("span", { text: o.nome || ("Objeto " + o.id) })]));
+    function linha(rot, campo) { inspectorEl.appendChild(el("div", { class: "insp-row" }, [el("span", { class: "insp-label", text: rot }), campo])); return campo; }
+    var inNome = el("input", { type: "text", value: o.nome || "" }); inNome.oninput = function () { o.nome = inNome.value; };
+    linha("Nome", inNome);
+    linha("Tipo", el("span", { class: "insp-ro", text: o.tipo }));
+    var inX = el("input", { type: "number", value: Math.round(o.x) }); inX.oninput = function () { o.x = Number(inX.value) || 0; };
+    var inY = el("input", { type: "number", value: Math.round(o.y) }); inY.oninput = function () { o.y = Number(inY.value) || 0; };
+    var inW = el("input", { type: "number", value: Math.round(o.w) }); inW.oninput = function () { o.w = Number(inW.value) || 0; };
+    var inH = el("input", { type: "number", value: Math.round(o.h) }); inH.oninput = function () { o.h = Number(inH.value) || 0; };
+    linha("Posição X", inX); linha("Posição Y", inY);
+    linha("Largura", inW); linha("Altura", inH);
+    var inEst = el("input", { type: "checkbox" }); inEst.checked = !!o.estatico; inEst.onchange = function () { o.estatico = inEst.checked; };
+    linha("Estático", inEst);
+    var sw = el("span", { class: "insp-swatch" }); sw.style.background = o.cor || "#888";
+    linha("Cor", sw);
+    inspFields = { o: o, nome: inNome, x: inX, y: inY, w: inW, h: inH, est: inEst, cor: sw };
+  }
+  function atualizarInspector(o) {
+    if (!inspFields || inspFields.o !== o) return;
+    function set(inp, v) { if (document.activeElement !== inp) inp.value = v; }
+    set(inspFields.x, Math.round(o.x)); set(inspFields.y, Math.round(o.y));
+    set(inspFields.w, Math.round(o.w)); set(inspFields.h, Math.round(o.h));
+    set(inspFields.nome, o.nome || "");
+    inspFields.cor.style.background = o.cor || "#888";
+    if (document.activeElement !== inspFields.est) inspFields.est.checked = !!o.estatico;
+  }
+
+  function marcarDirty() { dirty = true; setStatus("alterações não salvas"); }
+
+  function painelDe(id) {
+    var z = null;
+    Object.keys(zonas).forEach(function (k) { if (zonas[k].paineis.indexOf(id) >= 0) z = k; });
+    return z;
+  }
+  function ativarPainel(zonaId, pid) {
+    var z = zonas[zonaId]; if (!z || z.paineis.indexOf(pid) < 0) return;
+    z.ativo = pid; renderZona(z);
+  }
+  function abrirPainel(id) {
+    var z = painelDe(id);
+    if (z) ativarPainel(z, id);
+  }
+  function moverPainel(id, zonaId) {
+    var de = painelDe(id);
+    if (de === zonaId) { ativarPainel(zonaId, id); return; }
+    var z = zonas[zonaId]; if (!z) return;
+    if (de && zonas[de]) {
+      zonas[de].paineis = zonas[de].paineis.filter(function (x) { return x !== id; });
+      if (zonas[de].ativo === id) zonas[de].ativo = zonas[de].paineis[0] || null;
+    }
+    if (z.paineis.indexOf(id) < 0) z.paineis.push(id);
+    z.bodyEl.appendChild(paineis[id].el);
+    z.ativo = id;
+    renderTodas();
+  }
+  function renderZona(z) {
+    z.tabsEl.innerHTML = "";
+    z.paineis.forEach(function (pid) {
+      var p = paineis[pid];
+      var b = el("button", { class: "tab" + (z.ativo === pid ? " on" : ""), type: "button", draggable: "true", title: "Arraste para mover esta aba" });
+      b.appendChild(el("span", { class: "tdot dot " + p.dot }));
+      b.appendChild(el("span", { class: "tt", text: p.titulo }));
+      b.addEventListener("click", function () { ativarPainel(z.id, pid); });
+      b.addEventListener("dragstart", function (e) { arrastando = pid; e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", pid); } catch (_) {} });
+      b.addEventListener("dragend", function () { arrastando = null; });
+      z.tabsEl.appendChild(b);
+    });
+    z.paineis.forEach(function (pid) { paineis[pid].el.hidden = (z.ativo !== pid); });
+    z.el.hidden = z.paineis.length === 0;
+  }
+  function renderTodas() { Object.keys(zonas).forEach(function (k) { renderZona(zonas[k]); }); }
+
+  function iniciarDocks() {
+    paineis = {}; zonas = {};
+    Array.prototype.forEach.call(docksEl.querySelectorAll(".zone"), function (z) {
+      var zona = { id: z.getAttribute("data-zona"), el: z, tabsEl: z.querySelector("[data-tabs]"), bodyEl: z.querySelector("[data-body]"), paineis: [], ativo: null };
+      Array.prototype.forEach.call(zona.bodyEl.querySelectorAll(".panel"), function (p) {
+        var pid = p.getAttribute("data-panel");
+        paineis[pid] = { id: pid, titulo: p.getAttribute("data-titulo"), dot: p.getAttribute("data-dot"), el: p };
+        zona.paineis.push(pid);
+      });
+      zonas[zona.id] = zona;
+    });
+    Object.keys(zonas).forEach(function (k) {
+      var z = zonas[k];
+      z.el.addEventListener("dragover", function (e) { if (!arrastando) return; e.preventDefault(); try { e.dataTransfer.dropEffect = "move"; } catch (_) {} z.el.classList.add("dropalvo"); });
+      z.el.addEventListener("dragleave", function (e) { if (z.el.contains(e.relatedTarget)) return; z.el.classList.remove("dropalvo"); });
+      z.el.addEventListener("drop", function (e) { e.preventDefault(); z.el.classList.remove("dropalvo"); if (arrastando) moverPainel(arrastando, z.id); arrastando = null; });
+    });
+    Object.keys(zonas).forEach(function (k) { if (zonas[k].paineis.length) zonas[k].ativo = zonas[k].paineis[0]; });
+    renderTodas();
+  }
+
+  function definirModo(m) {
+    modo = m; parar();
+    modoLabelEl.textContent = m === "js" ? "JavaScript" : (m === "yashnativo" ? "YashScript (nativo)" : "YashScript");
+    noteEl.innerHTML = m === "js"
+      ? "Modo <b>JavaScript</b>: a lógica usa a API <code>ys.*</code> do motor direto (modo opcional)."
+      : (m === "yashnativo"
+        ? "Modo <b>YashScript (nativo)</b>: interpretado pela engine nativa (YashLang + canvas), <b>sem Fengari nem runtime Roblox</b>."
+        : "Modo <b>YashScript</b>: o editor é compilado pelo compilador real (YashScript → Luau) e executado num runtime Roblox-lite 2D, desenhado pelo motor de canvas.");
+    mostrarErro(""); limparLog();
+    renderArvore(); rodar();
+  }
+
+  var MENUS = [
+    { rot: "Arquivo", itens: [
+      { rot: "Salvar", atalho: "Ctrl+S", fn: function () { salvar(); } },
+      { rot: "Rodar", atalho: "F5", fn: function () { rodar(); } },
+      { sep: true },
+      { rot: "Voltar aos projetos", fn: function () { location.href = "playground.html"; } },
+      { rot: "Sair da conta", fn: function () { YashAuth.sair(); } }
+    ] },
+    { rot: "Cena", itens: [
+      { rot: "Rodar", fn: function () { rodar(); } },
+      { rot: "Pausar / Continuar", fn: function () { pausarAcao(); } },
+      { rot: "Restaurar", fn: function () { restaurarAcao(); } }
+    ] },
+    { rot: "Exibir", itens: [
+      { rot: "Aba: Cena", fn: function () { abrirPainel("cena"); } },
+      { rot: "Aba: jogo.yash", fn: function () { abrirPainel("script"); } },
+      { rot: "Aba: Saída", fn: function () { abrirPainel("saida"); } },
+      { rot: "Aba: Inspetor", fn: function () { abrirPainel("inspetor"); } }
+    ] },
+    { rot: "Modo", itens: [
+      { rot: "YashScript", fn: function () { definirModo("yash"); } },
+      { rot: "YashScript (nativo)", fn: function () { definirModo("yashnativo"); } },
+      { rot: "JavaScript", fn: function () { definirModo("js"); } }
+    ] },
+    { rot: "Ajuda", itens: [
+      { rot: "Sobre o YashStudio", fn: function () { mostrarSobre(); } }
+    ] }
+  ];
+
+  function fecharMenus() {
+    Array.prototype.forEach.call(menusEl.children, function (w) { w.classList.remove("open"); var p = w.querySelector(".menu-pop"); if (p) p.hidden = true; });
+  }
+  function construirMenus() {
+    menusEl.innerHTML = "";
+    MENUS.forEach(function (m) {
+      var wrap = el("div", { class: "menu" });
+      var btn = el("button", { type: "button", text: m.rot });
+      var pop = el("div", { class: "menu-pop" }); pop.hidden = true;
+      m.itens.forEach(function (it) {
+        if (it.sep) { pop.appendChild(el("div", { class: "sep" })); return; }
+        var b = el("button", { type: "button" }, [el("span", { text: it.rot })]);
+        if (it.atalho) b.appendChild(el("span", { class: "mi-atalho", text: it.atalho }));
+        b.onclick = function (e) { e.stopPropagation(); fecharMenus(); it.fn(); };
+        pop.appendChild(b);
+      });
+      btn.onclick = function (e) { e.stopPropagation(); var abrir = pop.hidden; fecharMenus(); if (abrir) { pop.hidden = false; wrap.classList.add("open"); } };
+      wrap.appendChild(btn); wrap.appendChild(pop); menusEl.appendChild(wrap);
+    });
+  }
+
+  function mostrarSobre() {
+    var o = el("div", { class: "about-bg" });
+    var c = el("div", { class: "about-card" }, [
+      el("h3", { text: "YashStudio 2D" }),
+      el("p", { text: "Mini studio no navegador. A disposição dos painéis segue o estilo do Godot: as abas podem ser arrastadas entre os painéis e você escolhe onde cada uma fica. O visual segue o tema do site YashScript. Compila YashScript → Luau num runtime Roblox-lite 2D." }),
+      el("button", { class: "tbtn", type: "button", text: "Fechar", onclick: function () { o.remove(); } })
+    ]);
+    o.appendChild(c);
+    o.addEventListener("click", function (e) { if (e.target === o) o.remove(); });
+    document.body.appendChild(o);
+  }
+
+  document.getElementById("rodar").addEventListener("click", rodar);
+  document.getElementById("salvar").addEventListener("click", salvar);
+  document.getElementById("pausar").addEventListener("click", pausarAcao);
+  document.getElementById("restaurar").addEventListener("click", restaurarAcao);
+
+  codeEl.addEventListener("input", function () {
+    scripts[0].conteudo = codeEl.value;
+    marcarDirty();
+  });
+  pnomeEl.addEventListener("change", function () {
+    projetoNome = pnomeEl.value.trim() || "Projeto";
+    pnomeEl.value = projetoNome;
+    marcarDirty();
+  });
+
+  canvas.addEventListener("mousemove", function (e) {
+    var r = canvas.getBoundingClientRect();
+    var escala = Math.min(r.width / canvas.width, r.height / canvas.height) || 1;
+    var w = canvas.width * escala, h = canvas.height * escala;
+    var ox = r.left + (r.width - w) / 2, oy = r.top + (r.height - h) / 2;
+    mouseX = (e.clientX - ox) / escala;
+    mouseY = (e.clientY - oy) / escala;
+  });
+
+  window.addEventListener("keydown", function (e) {
+    if (e.key === "F5") { e.preventDefault(); rodar(); return; }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) { e.preventDefault(); if (modo === "yash") salvar(); return; }
+    if (document.activeElement === codeEl || document.activeElement === pnomeEl) return;
+    if (modo !== "yash" || !ctrl) return;
+    var k = mapKey(e);
+    if (k) { ctrl.chamar("tecla", [k, true]); var c = e.code || ""; if (c === "Space" || c.indexOf("Arrow") === 0) e.preventDefault(); }
+  });
+  window.addEventListener("keyup", function (e) {
+    if (document.activeElement === codeEl || document.activeElement === pnomeEl) return;
+    if (modo !== "yash" || !ctrl) return;
+    var k = mapKey(e);
+    if (k) ctrl.chamar("tecla", [k, false]);
+  });
+
+  setInterval(function () { if (dirty) salvar(); }, 5 * 60 * 1000);
+  document.addEventListener("visibilitychange", function () { if (document.hidden && dirty) salvar(); });
+  window.addEventListener("beforeunload", function (e) { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+
+  function erroView(msg) {
+    centro.hidden = false; principal.hidden = true;
+    document.getElementById("centro-t").textContent = "Não foi possível abrir o projeto";
+    document.getElementById("centro-p").innerHTML = "";
+    document.getElementById("centro-p").appendChild(el("span", { text: msg }));
+    document.getElementById("centro-p").appendChild(document.createElement("br"));
+    document.getElementById("centro-p").appendChild(el("a", { href: "playground.html", text: "Voltar aos meus projetos" }));
+  }
+
+  function boot() {
+    projetoId = new URLSearchParams(location.search).get("id");
+    if (!projetoId) return erroView("Projeto não especificado na URL.");
+    YashAuth.carregarProjeto(projetoId).then(function (p) {
+      if (!p) return erroView("Projeto não encontrado, ou ele não pertence à sua conta.");
+      projetoNome = p.nome || "Projeto";
+      pnomeEl.value = projetoNome;
+      codeEl.value = (p.codigo && p.codigo.trim()) ? p.codigo : CONTEUDO_PADRAO;
+      scripts[0].conteudo = codeEl.value;
+      centro.hidden = true; principal.hidden = false;
+      setStatus("salvo", "ok");
+      definirModo("yash");
+    }, function (e) { erroView(e && e.message || String(e)); });
+  }
+
+  iniciarDocks();
+  construirMenus();
+  renderInspector(true);
+  YashUI.chip(document.getElementById("ys-conta"), { aoProjetos: function () { location.href = "playground.html"; } });
+  YashAuth.aoPronto(function (st) {
+    if (!st.usuario) { centro.hidden = false; principal.hidden = true; YashUI.exigirLogin({ permitirPular: false }).then(boot); }
+    else boot();
+  });
+
+  window.__yashDebug = function () {
+    return { modo: modo, projeto: projetoId, dirty: dirty, objs: engine ? engine.objs.filter(function (o) { return !o._dead; }).length : 0 };
+  };
+})();
+</script>
+</body>
+</html>

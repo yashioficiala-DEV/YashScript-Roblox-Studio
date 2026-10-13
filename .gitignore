@@ -1,6 +1,9 @@
 # Dependencias de build (instale com: npm install)
 node_modules/
 
+# Vinculo local do Vercel
+.vercel/
+
 # Pasta interna da ferramenta .qoder (vazia)
 .qoder/
 

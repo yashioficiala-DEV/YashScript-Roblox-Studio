@@ -271,6 +271,34 @@
       "</ul></div>";
   }
 
+  /* ------------------------------------------------------------ portes */
+  function portesCard(p) {
+    var links = (p.links || []).map(function (l) {
+      var ext = !l.interno && /^https?:/i.test(l.href);
+      var attrs = ext ? ' target="_blank" rel="noopener"' : "";
+      return '<a class="btn' + (ext ? " ghost" : "") + '" href="' + esc(l.href) + '"' + attrs + ">" + esc(l.rot) + "</a>";
+    }).join(" ");
+    var destaques = (p.destaques && p.destaques.length)
+      ? '<ul style="margin:10px 0 0;padding-left:18px">' + p.destaques.map(function (d) { return "<li>" + esc(d) + "</li>"; }).join("") + "</ul>"
+      : "";
+    return '<div class="card">' +
+      '<span class="pill" style="margin-bottom:10px">' + esc(p.tag) + " · " + esc(p.status) + "</span>" +
+      "<h3>" + esc(p.nome) + "</h3>" +
+      "<p>" + p.resumo + "</p>" +
+      '<p class="muted" style="margin:8px 0 0;font-size:13px">Alvo: <strong>' + esc(p.alvo) + "</strong> · Saída: <strong>" + esc(p.saida) + "</strong></p>" +
+      destaques +
+      (links ? '<div class="cta" style="margin-top:14px">' + links + "</div>" : "") +
+      "</div>";
+  }
+  function renderPortes() {
+    var host = $("#portes-host"); if (!host) return;
+    host.innerHTML = '<div class="grid cols-2">' + (Y.portes || []).map(portesCard).join("") + "</div>";
+  }
+  function renderHomePortes() {
+    var host = $("#home-portes"); if (!host) return;
+    host.innerHTML = (Y.portes || []).map(portesCard).join("");
+  }
+
   /* ------------------------------------------------------------ copy */
   function attachCopy(scope) {
     $$("pre", scope).forEach(function (pre) {
@@ -297,7 +325,7 @@
   }
 
   /* ------------------------------------------------------------ routing */
-  var VIEWS = ["inicio", "guia", "referencia", "tabelas", "exemplos", "limitacoes"];
+  var VIEWS = ["inicio", "guia", "referencia", "tabelas", "exemplos", "limitacoes", "portes"];
   function route() {
     var h = location.hash.replace(/^#\/?/, "");
     var parts = h.split("/");
@@ -331,6 +359,7 @@
     idx.push({ t: "Tabelas de referência", s: "Tabela", d: "Serviços, propriedades, materiais, fontes, teclas, efeitos e easing.", go: "#/tabelas" });
     idx.push({ t: "Exemplos", s: "Exemplos", d: "Scripts prontos: fundamentos, laços, funções, menu/câmera e mais.", go: "#/exemplos" });
     idx.push({ t: "Limitações conhecidas", s: "Guia", d: "O que evitar e o que foi removido em V8.", go: "#/limitacoes" });
+    idx.push({ t: "Portes", s: "Portes", d: "Plugin Roblox Studio e Engine Web/Nativa — onde a linguagem roda.", go: "#/portes" });
   }
   var palActive = 0, palResults = [];
   function openPalette() { var o = $("#overlay"); o.classList.add("open"); var i = $("#pal-input"); i.value = ""; paintPalette(""); i.focus(); }
@@ -392,7 +421,7 @@
     $$("pre[data-static]").forEach(function (pre) {
       var c = pre.querySelector("code"); if (c) c.innerHTML = highlight(c.textContent);
     });
-    renderGuia(); renderReferencia(); renderTabelas(); renderExemplos(); renderLimitacoes();
+    renderGuia(); renderReferencia(); renderTabelas(); renderExemplos(); renderLimitacoes(); renderPortes(); renderHomePortes();
     initPalette(); initMobile();
     route();
   });

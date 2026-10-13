@@ -32,7 +32,11 @@
   function comPrazo(p, ms, rotulo) {
     var relogio = null;
     var prazo = new Promise(function (_, rej) {
-      relogio = setTimeout(function () { rej(new Error((rotulo || "A operacao") + " demorou para responder. Verifique sua conexao e tente de novo.")); }, ms);
+      relogio = setTimeout(function () {
+        var e = new Error((rotulo || "A operacao") + " não respondeu. A nuvem está sem conexão no momento — tente de novo em instantes.");
+        e.code = "nuvem-sem-resposta";
+        rej(e);
+      }, ms);
     });
     return Promise.race([p, prazo]).then(function (v) { clearTimeout(relogio); return v; }, function (e) { clearTimeout(relogio); throw e; });
   }
@@ -209,11 +213,11 @@
     return usuario;
   }
   function carregarPerfil(user) {
-    return comPrazo(fbfn.cs.getDoc(perfilRef(user.uid)), 12000, "Ler o perfil na nuvem").then(function (snap) {
+    return comPrazo(fbfn.cs.getDoc(perfilRef(user.uid)), 8000, "Ler o perfil na nuvem").then(function (snap) {
       if (!snap.exists()) {
         var dados = perfilDeUser(user);
         dados.nomeEscolhido = false;
-        return comPrazo(fbfn.cs.setDoc(perfilRef(user.uid), dados), 12000, "Criar o perfil na nuvem").then(function () { return dados; });
+        return comPrazo(fbfn.cs.setDoc(perfilRef(user.uid), dados), 8000, "Criar o perfil na nuvem").then(function () { return dados; });
       }
       return snap.data();
     }).then(function (dados) {
@@ -227,17 +231,17 @@
   }
   function fbcriar(nome) {
     var dados = { donoId: usuario.uid, nome: nome || "Projeto sem nome", codigo: "", criadoEm: agora(), atualizadoEm: agora() };
-    return comPrazo(fbfn.cs.addDoc(fbfn.cs.collection(dbRef, "projetos"), dados), 15000, "Criar o projeto").then(function (ref) { return Object.assign({ id: ref.id }, dados); });
+    return comPrazo(fbfn.cs.addDoc(fbfn.cs.collection(dbRef, "projetos"), dados), 8000, "Criar o projeto").then(function (ref) { return Object.assign({ id: ref.id }, dados); });
   }
   function fblistar() {
     var q = fbfn.cs.query(fbfn.cs.collection(dbRef, "projetos"), fbfn.cs.where("donoId", "==", usuario.uid));
-    return comPrazo(fbfn.cs.getDocs(q), 15000, "Listar seus projetos").then(function (snap) {
+    return comPrazo(fbfn.cs.getDocs(q), 8000, "Listar seus projetos").then(function (snap) {
       var arr = []; snap.forEach(function (d) { var x = d.data(); x.id = d.id; arr.push(x); });
       arr.sort(function (a, b) { return (b.atualizadoEm || 0) - (a.atualizadoEm || 0); }); return arr;
     });
   }
   function fbcarregar(id) {
-    return comPrazo(fbfn.cs.getDoc(fbfn.cs.doc(dbRef, "projetos", id)), 15000, "Abrir o projeto").then(function (snap) {
+    return comPrazo(fbfn.cs.getDoc(fbfn.cs.doc(dbRef, "projetos", id)), 8000, "Abrir o projeto").then(function (snap) {
       if (!snap.exists()) return null;
       var p = snap.data(); p.id = snap.id;
       return (!usuario || p.donoId !== usuario.uid) ? null : p;
@@ -247,12 +251,12 @@
     var ref = fbfn.cs.doc(dbRef, "projetos", id);
     return comPrazo(fbfn.cs.getDoc(ref).then(function (snap) {
       if (!snap.exists()) throw new Error("Projeto não encontrado.");
-      return comPrazo(fbfn.cs.updateDoc(ref, Object.assign({}, dados, { atualizadoEm: agora() })), 15000, "Salvar o projeto");
-    }), 30000, "Salvar o projeto").then(function () {
+      return comPrazo(fbfn.cs.updateDoc(ref, Object.assign({}, dados, { atualizadoEm: agora() })), 8000, "Salvar o projeto");
+    }), 15000, "Salvar o projeto").then(function () {
       return Object.assign({ id: id }, dados, { atualizadoEm: agora() });
     });
   }
-  function fbexcluir(id) { return comPrazo(fbfn.cs.deleteDoc(fbfn.cs.doc(dbRef, "projetos", id)), 15000, "Excluir o projeto"); }
+  function fbexcluir(id) { return comPrazo(fbfn.cs.deleteDoc(fbfn.cs.doc(dbRef, "projetos", id)), 8000, "Excluir o projeto"); }
 
   function inicioFirebase() {
     return carregarFirebase().then(function () {
@@ -326,8 +330,11 @@
       gravarPerfilCache(usuario.uid, usuario);
       emitir();
       if (!nuvemAtiva()) return Promise.resolve(usuario);
-      return comPrazo(fbfn.cs.setDoc(perfilRef(usuario.uid), clonar(envia), { merge: true }), 15000, "Salvar na nuvem")
-        .then(function () { return usuario; });
+      return comPrazo(fbfn.cs.setDoc(perfilRef(usuario.uid), clonar(envia), { merge: true }), 8000, "Salvar na nuvem")
+        .then(function () { return usuario; }, function (e) {
+          console.warn("Falha ao sincronizar o perfil com o Firestore:", e);
+          throw e;
+        });
     },
     listarProjetos: function () { return usuario ? (nuvemAtiva() ? fblistar() : Promise.resolve(localListar())) : Promise.resolve([]); },
     criarProjeto: function (nome) { return usuario ? (nuvemAtiva() ? fbcriar(nome) : Promise.resolve(localCriar(nome))) : Promise.reject(new Error("Sem conta.")); },
@@ -379,6 +386,14 @@
 
   var YashUI = {
     avatarEl: avatarEl,
+
+    avisar: function (msg, tipo) {
+      try {
+        var t = el("div", { class: "ys-toast " + (tipo || ""), text: msg });
+        document.body.appendChild(t);
+        setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 5000);
+      } catch (e) {}
+    },
 
     exigirLogin: function (opcoes) {
       opcoes = opcoes || {};
@@ -438,15 +453,19 @@
       var salvar = el("button", { class: "ys-btn ys-btn-primary", type: "button", text: "Salvar nome" });
       var pular = el("button", { class: "ys-btn", type: "button", text: "Usar o nome do Google" });
       function fechar() { if (bg.parentNode) bg.parentNode.removeChild(bg); }
+      function nomeSalvo(e) {
+        fechar();
+        YashUI.avisar("Nome guardado neste navegador. " + mensagemErro(e), "erro");
+      }
       salvar.onclick = function () {
         var nome = (inp.value || "").trim();
         if (nome.length < 2) { err.textContent = "Escolha um nome com pelo menos 2 letras."; inp.focus(); return; }
         salvar.disabled = pular.disabled = true; err.textContent = "";
-        YashAuth.atualizarPerfil({ nome: nome.slice(0, 32), nomeEscolhido: true }).then(fechar, function (e) { err.textContent = mensagemErro(e); salvar.disabled = pular.disabled = false; });
+        YashAuth.atualizarPerfil({ nome: nome.slice(0, 32), nomeEscolhido: true }).then(fechar, nomeSalvo);
       };
       pular.onclick = function () {
         pular.disabled = salvar.disabled = true; err.textContent = "";
-        YashAuth.atualizarPerfil({ nome: u.nome || "Jogador", nomeEscolhido: true }).then(fechar, function (e) { err.textContent = mensagemErro(e); pular.disabled = salvar.disabled = false; });
+        YashAuth.atualizarPerfil({ nome: u.nome || "Jogador", nomeEscolhido: true }).then(fechar, nomeSalvo);
       };
       var card = el("div", { class: "ys-modal ys-nome" }, [
         el("div", { class: "ys-gate-logo", text: "Y" }),
@@ -508,9 +527,9 @@
       bg.addEventListener("click", function (e) { if (e.target === bg) fechar(); });
       salvar.onclick = function () {
         salvar.disabled = true; err.textContent = ""; salvar.textContent = "Salvando…";
-        function restaurar() { salvar.disabled = false; salvar.textContent = "Salvar"; }
         YashAuth.atualizarPerfil({ nome: ed.nome.trim() || "Jogador", foto: ed.foto, bannerTipo: ed.bannerTipo, bannerCor: ed.bannerCor, bannerFoto: ed.bannerFoto })
-          .then(fechar, function (e) { err.textContent = mensagemErro(e); restaurar(); });
+          .then(function () { fechar(); YashUI.avisar("Perfil salvo.", "ok"); },
+                function (e) { fechar(); YashUI.avisar("Perfil salvo neste navegador. " + mensagemErro(e), "erro"); });
       };
 
       var card = el("div", { class: "ys-modal ys-perfil" }, [

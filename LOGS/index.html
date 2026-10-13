@@ -24,13 +24,18 @@
       <a class="brand" href="#/inicio"><span class="logo">Y</span>YashScript <span class="ver">V8.2</span></a>
       <nav class="mainnav" aria-label="Seções">
         <a href="#/inicio">Início</a>
-        <a href="#/guia">Guia</a>
-        <a href="#/referencia">Referência</a>
-        <a href="#/tabelas">Tabelas</a>
-        <a href="#/exemplos">Exemplos</a>
-        <a href="#/limitacoes">Limitações</a>
+        <div class="navdrop" id="navdrop">
+          <button class="navdrop-btn" type="button" id="navdrop-btn" aria-expanded="false" aria-haspopup="true">Linguagem <span class="caret" aria-hidden="true">▾</span></button>
+          <div class="navdrop-menu" role="menu">
+            <a href="#/guia" role="menuitem">Guia</a>
+            <a href="#/referencia" role="menuitem">Referência</a>
+            <a href="#/tabelas" role="menuitem">Tabelas</a>
+            <a href="#/exemplos" role="menuitem">Exemplos</a>
+            <a href="#/limitacoes" role="menuitem">Limitações</a>
+          </div>
+        </div>
         <a href="#/portes">Portes</a>
-        <a href="playground.html">Playground</a>
+        <a href="playground.html" class="engine-link">Engine</a>
       </nav>
       <div class="actions">
         <span id="ys-conta"></span>
@@ -54,7 +59,7 @@
       <a href="#/exemplos">Exemplos</a>
       <a href="#/limitacoes">Limitações</a>
       <a href="#/portes">Portes</a>
-      <a href="playground.html">Playground</a>
+        <a href="playground.html">Engine</a>
     </div>
   </div>
 

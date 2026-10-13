@@ -144,13 +144,20 @@
     var chips = ['<button class="chip active" data-cat="Todas" type="button">Todas</button>']
       .concat(cats.map(function (c) {
         var n = Y.entries.filter(function (e) { return e.c === c; }).length;
-        return '<button class="chip" data-cat="' + esc(c) + '" type="button">' + esc(c) + " (" + n + ")</button>";
+        return '<button class="chip" data-cat="' + esc(c) + '" type="button">' + esc(c) + ' <span class="n">' + n + "</span></button>";
       })).join("");
 
     host.innerHTML =
-      '<div class="ref-toolbar"><div class="dict-search" style="max-width:420px;flex:1">' +
-      '<span aria-hidden="true">⌕</span><input id="ref-filter" type="search" placeholder="Filtrar palavras, comandos e propriedades…" autocomplete="off"></div></div>' +
-      '<div class="ref-cats" id="ref-chips">' + chips + "</div>" +
+      '<div class="ref-controls">' +
+        '<div class="filterbar">' +
+          '<div class="dict-search"><span aria-hidden="true">⌕</span><input id="ref-filter" type="search" placeholder="Pesquisar palavras, comandos e propriedades…" autocomplete="off"></div>' +
+          '<button class="filter-toggle" type="button" id="ref-toggle" aria-expanded="true" aria-controls="ref-panel">Filtros <span class="caret" aria-hidden="true">▾</span> <span class="fbadge" id="ref-fbadge">Todas</span></button>' +
+        "</div>" +
+        '<div class="filter-panel" id="ref-panel">' +
+          '<div class="filter-group"><span class="filter-label">Categoria</span><div class="ref-cats" id="ref-chips">' + chips + "</div></div>" +
+          '<div class="filter-actions"><button class="filter-clear" type="button" id="ref-clear">Limpar filtros</button></div>' +
+        "</div>" +
+      "</div>" +
       '<div class="result-count" id="ref-count"></div>' +
       '<div class="ref-list" id="ref-list"></div>';
 
@@ -161,6 +168,20 @@
       paintRef();
     });
     $("#ref-filter").addEventListener("input", function (ev) { refQuery = ev.target.value; paintRef(); });
+    var panel = $("#ref-panel"), toggle = $("#ref-toggle");
+    toggle.addEventListener("click", function () {
+      var aberto = toggle.getAttribute("aria-expanded") === "true";
+      toggle.setAttribute("aria-expanded", aberto ? "false" : "true");
+      panel.hidden = aberto;
+    });
+    $("#ref-clear").addEventListener("click", function () {
+      refQuery = ""; $("#ref-filter").value = ""; refActiveCat = "Todas";
+      $$("#ref-chips .chip").forEach(function (x) { x.classList.toggle("active", x.getAttribute("data-cat") === "Todas"); });
+      paintRef();
+    });
+    if (window.matchMedia && window.matchMedia("(max-width: 640px)").matches) {
+      toggle.setAttribute("aria-expanded", "false"); panel.hidden = true;
+    }
     paintRef();
   }
 
@@ -183,11 +204,12 @@
       return hay.indexOf(q) >= 0;
     });
     $("#ref-count").textContent = list.length + (list.length === 1 ? " verbete" : " verbetes");
+    var badge = $("#ref-fbadge"); if (badge) badge.textContent = refActiveCat;
     if (!list.length) { host.innerHTML = '<p class="empty">Nenhum verbete encontrado.</p>'; return; }
-    host.innerHTML = list.map(function (e) {
+    host.innerHTML = list.map(function (e, i) {
       var id = "ref-" + slug(e.w);
       var kws = e.w.map(function (w) { return "<b>" + esc(w) + "</b>"; }).join('<span class="tok-punct"> · </span>');
-      return '<article class="ref-item" id="' + id + '" data-cat="' + esc(e.c) + '">' +
+      return '<article class="ref-item" id="' + id + '" data-cat="' + esc(e.c) + '" style="animation-delay:' + Math.min(i, 12) * 32 + 'ms">' +
         '<div class="top"><span class="cat">' + esc(e.c) + "</span></div>" +
         '<h3 class="kw">' + kws + "</h3>" +
         '<p class="desc">' + e.d + "</p>" +
@@ -326,26 +348,61 @@
 
   /* ------------------------------------------------------------ routing */
   var VIEWS = ["inicio", "guia", "referencia", "tabelas", "exemplos", "limitacoes", "portes"];
+  var LANG_VIEWS = ["guia", "referencia", "tabelas", "exemplos", "limitacoes"];
+  var _navToken = 0;
   function route() {
     var h = location.hash.replace(/^#\/?/, "");
     var parts = h.split("/");
     var view = VIEWS.indexOf(parts[0]) >= 0 ? parts[0] : "inicio";
     var param = parts[1] || "";
-    VIEWS.forEach(function (v) { var el = $("#view-" + v); if (el) el.classList.toggle("active", v === view); });
+    var meu = ++_navToken;
+    $$(".view-saindo").forEach(function (el) { el.classList.remove("view-saindo"); });
     $$(".mainnav a, .mobilenav a").forEach(function (a) {
       a.classList.toggle("active", a.getAttribute("href") === "#/" + view);
     });
-    if (view === "referencia" && param) {
-      var el = document.getElementById("ref-" + param);
-      if (el) {
-        $$(".ref-item.selected").forEach(function (x) { x.classList.remove("selected"); });
-        el.classList.add("selected");
-        setTimeout(function () { el.scrollIntoView({ block: "center" }); }, 60);
-      }
-    } else {
-      try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (e) {}
-    }
+    var nb = $("#navdrop-btn");
+    if (nb) nb.classList.toggle("active", LANG_VIEWS.indexOf(view) >= 0);
+    closeNavDrop();
     closeMobile();
+
+    var atual = document.querySelector(".view.active");
+    var proximo = $("#view-" + view);
+
+    function posicionar() {
+      if (view === "referencia" && param) {
+        var el = document.getElementById("ref-" + param);
+        if (el) {
+          $$(".ref-item.selected").forEach(function (x) { x.classList.remove("selected"); });
+          el.classList.add("selected");
+          setTimeout(function () { el.scrollIntoView({ block: "center" }); }, 60);
+        }
+      } else {
+        try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (e) {}
+      }
+    }
+    function ativar() {
+      VIEWS.forEach(function (v) { var el = $("#view-" + v); if (el) el.classList.toggle("active", v === view); });
+      if (window.YashReveal && proximo) window.YashReveal.rearm(proximo);
+    }
+
+    function entrar(el) {
+      if (!el) return;
+      el.classList.remove("view-entrando");
+      void el.offsetWidth;
+      el.classList.add("view-entrando");
+    }
+
+    if (!atual) { ativar(); posicionar(); entrar(proximo); return; }
+    if (atual === proximo) { posicionar(); return; }
+
+    atual.classList.add("view-saindo");
+    setTimeout(function () {
+      if (meu !== _navToken) return;
+      atual.classList.remove("active", "view-saindo");
+      ativar();
+      posicionar();
+      entrar(proximo);
+    }, 220);
   }
   window.addEventListener("hashchange", route);
 
@@ -415,6 +472,157 @@
     if (btn && m) btn.addEventListener("click", function () { m.classList.toggle("open"); });
   }
 
+  /* ------------------------------------------------------------ nav dropdown */
+  function closeNavDrop() {
+    var d = $("#navdrop"); if (!d) return;
+    d.classList.remove("open");
+    var b = $("#navdrop-btn"); if (b) b.setAttribute("aria-expanded", "false");
+  }
+  function initNavDrop() {
+    var d = $("#navdrop"), b = $("#navdrop-btn");
+    if (!d || !b) return;
+    b.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var aberto = d.classList.toggle("open");
+      b.setAttribute("aria-expanded", aberto ? "true" : "false");
+    });
+    document.addEventListener("click", function (e) { if (!d.contains(e.target)) closeNavDrop(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeNavDrop(); });
+    $$(".navdrop-menu a", d).forEach(function (a) { a.addEventListener("click", closeNavDrop); });
+  }
+
+  /* ------------------------------------------------------------ reveal */
+  function initReveal() {
+    document.documentElement.classList.add("jsreveal");
+    var SEL = ".hero > .wrap > *, .section-head, .cta, .grid > div, .card, .tablecard, " +
+      ".example, .doc, .pipeline, .callout, .ref-controls, .result-count";
+    function revelar(el) {
+      if (el.classList.contains("in")) return;
+      var d = parseFloat(el.style.getPropertyValue("--d")) || 0;
+      el.classList.add("in");
+      setTimeout(function () {
+        el.classList.remove("reveal", "in", "reveal-x", "reveal-scale");
+        el.style.removeProperty("--d");
+      }, 780 + d);
+    }
+    var io = null;
+    if ("IntersectionObserver" in window) {
+      io = new IntersectionObserver(function (ents) {
+        ents.forEach(function (en) { if (en.isIntersecting) revelar(en.target); });
+      }, { rootMargin: "0px 0px -6% 0px", threshold: 0.06 });
+    }
+    function marcar(scope) {
+      $$(SEL, scope).forEach(function (el) {
+        if (el.getAttribute("data-reveal") === "1") return;
+        el.setAttribute("data-reveal", "1");
+        el.classList.add("reveal");
+        if (el.classList.contains("card") || el.classList.contains("tablecard")) el.classList.add("reveal-scale");
+        else if (el.classList.contains("section-head")) el.classList.add("reveal-x");
+        var p = el.parentNode, idx = 0;
+        if (p) {
+          var kids = p.children, seen = [];
+          for (var i = 0; i < kids.length; i++) {
+            if (kids[i].classList && kids[i].classList.contains("reveal")) seen.push(kids[i]);
+          }
+          idx = seen.indexOf(el); if (idx < 0) idx = 0;
+        }
+        el.style.setProperty("--d", Math.min(idx, 8) * 90 + "ms");
+        if (io) io.observe(el);
+      });
+    }
+    function rearm(scope) {
+      if (!scope) return;
+      $$("[data-reveal='1']", scope).forEach(function (el) {
+        if (io) io.unobserve(el);
+        el.removeAttribute("data-reveal");
+        el.classList.remove("reveal", "in", "reveal-x", "reveal-scale");
+        el.style.removeProperty("--d");
+      });
+      marcar(scope);
+    }
+    var pendente = false;
+    function verificar() {
+      pendente = false;
+      var vh = window.innerHeight || document.documentElement.clientHeight;
+      var rest = $$(".reveal:not(.in)");
+      for (var i = 0; i < rest.length; i++) {
+        var r = rest[i].getBoundingClientRect();
+        if (r.top < vh * 0.92 && r.bottom > 4) revelar(rest[i]);
+      }
+    }
+    function agendar() { if (!pendente) { pendente = true; requestAnimationFrame(verificar); } }
+    marcar(document);
+    verificar();
+    window.addEventListener("scroll", agendar, { passive: true });
+    window.addEventListener("resize", agendar);
+    window.YashReveal = { scan: function () { marcar(document); agendar(); }, rearm: rearm };
+  }
+
+  /* ------------------------------------------------------------ progress */
+  function initProgress() {
+    var bar = document.createElement("div");
+    bar.className = "ys-progress";
+    document.body.appendChild(bar);
+    function upd() {
+      var h = document.documentElement;
+      var max = h.scrollHeight - h.clientHeight;
+      var p = max > 0 ? (h.scrollTop || document.body.scrollTop) / max : 0;
+      bar.style.width = Math.max(0, Math.min(1, p)) * 100 + "%";
+    }
+    window.addEventListener("scroll", upd, { passive: true });
+    window.addEventListener("resize", upd);
+    upd();
+  }
+
+  /* --------------------------------------------------- rolagem suave */
+  function dentroDeScrollavel(el, dy) {
+    while (el && el !== document.body && el !== document.documentElement) {
+      if (el.scrollHeight > el.clientHeight + 1) {
+        var ov = getComputedStyle(el).overflowY;
+        if (/(auto|scroll|overlay)/.test(ov)) {
+          var pode = dy > 0 ? (el.scrollTop + el.clientHeight < el.scrollHeight - 1) : (el.scrollTop > 0);
+          if (pode) return true;
+        }
+      }
+      el = el.parentElement;
+    }
+    return false;
+  }
+  function initSmoothScroll() {
+    var root = document.documentElement;
+    var target = window.pageYOffset || root.scrollTop, current = target, raf = null, ativo = false;
+    function limite() { return Math.max(0, root.scrollHeight - root.clientHeight); }
+    function passo() {
+      current += (target - current) * 0.16;
+      if (Math.abs(target - current) < 0.6) {
+        window.scrollTo(0, target);
+        raf = null; ativo = false; root.style.scrollBehavior = "";
+        return;
+      }
+      window.scrollTo(0, current);
+      raf = requestAnimationFrame(passo);
+    }
+    window.addEventListener("wheel", function (e) {
+      if (e.ctrlKey || e.defaultPrevented) return;
+      if (dentroDeScrollavel(e.target, e.deltaY)) return;
+      var m = limite(); if (m <= 0) return;
+      var dy = e.deltaY;
+      if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= window.innerHeight;
+      e.preventDefault();
+      if (!ativo) { ativo = true; current = window.pageYOffset || root.scrollTop; root.style.scrollBehavior = "auto"; }
+      target += dy;
+      if (target < 0) target = 0;
+      if (target > m) target = m;
+      if (!raf) raf = requestAnimationFrame(passo);
+    }, { passive: false });
+    window.addEventListener("scroll", function () {
+      if (!ativo) { target = current = window.pageYOffset || root.scrollTop; }
+    }, { passive: true });
+    window.addEventListener("resize", function () {
+      if (!ativo) { target = current = window.pageYOffset || root.scrollTop; }
+    });
+  }
+
   /* ------------------------------------------------------------ boot */
   document.addEventListener("DOMContentLoaded", function () {
     initTheme();
@@ -422,7 +630,10 @@
       var c = pre.querySelector("code"); if (c) c.innerHTML = highlight(c.textContent);
     });
     renderGuia(); renderReferencia(); renderTabelas(); renderExemplos(); renderLimitacoes(); renderPortes(); renderHomePortes();
-    initPalette(); initMobile();
+    initPalette(); initMobile(); initNavDrop();
     route();
+    initReveal();
+    initProgress();
+    initSmoothScroll();
   });
 })();

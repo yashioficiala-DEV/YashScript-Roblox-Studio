@@ -4,13 +4,18 @@
   padding: 20px;
   background: color-mix(in srgb, #04070f 72%, transparent);
   backdrop-filter: saturate(140%) blur(6px);
+  animation: ysFade var(--t, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
+@keyframes ysFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ysPop { from { opacity: 0; transform: translateY(24px) scale(.994); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
 .ys-modal {
   width: 100%; max-width: 460px; max-height: 90vh; overflow: auto;
   background: var(--bg-elev, #141b2d); color: var(--text, #e8edf7);
   border: 1px solid var(--border, #263049); border-radius: 16px;
   box-shadow: var(--shadow, 0 12px 34px rgba(0,0,0,.38));
   padding: 20px;
+  animation: ysPop var(--t-slow, 280ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  will-change: opacity, transform, filter;
 }
 .ys-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 
@@ -18,8 +23,10 @@
   font: inherit; color: var(--text, #e8edf7);
   background: var(--bg-soft, #1a2338); border: 1px solid var(--border, #263049);
   border-radius: 10px; padding: 9px 14px; cursor: pointer;
+  transition: border-color var(--t-fast, 120ms) var(--ease, ease), background var(--t-fast, 120ms) var(--ease, ease), transform var(--t-fast, 120ms) var(--ease, ease);
 }
 .ys-btn:hover { border-color: var(--accent, #5b8bff); }
+.ys-btn:active { transform: translateY(1px) scale(0.99); }
 .ys-btn:disabled { opacity: .55; cursor: default; }
 .ys-btn-sm { padding: 6px 10px; font-size: 13px; }
 .ys-btn-primary { background: var(--accent, #5b8bff); color: #fff; border-color: var(--accent, #5b8bff); font-weight: 700; }
@@ -37,6 +44,8 @@
   border: 1px solid var(--border, #263049); border-radius: 18px;
   box-shadow: var(--shadow, 0 12px 34px rgba(0,0,0,.38));
   padding: 30px 26px 24px;
+  animation: ysPop var(--t-slow, 280ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  will-change: opacity, transform, filter;
 }
 .ys-gate-logo {
   width: 58px; height: 58px; margin: 0 auto 14px; border-radius: 16px;
@@ -50,7 +59,9 @@
   width: 100%; padding: 12px 16px; margin-bottom: 10px;
   background: #fff; color: #1f1f1f; border: 1px solid #dadce0; border-radius: 10px;
   font: inherit; font-weight: 700; cursor: pointer;
+  transition: box-shadow var(--t-fast, 120ms) var(--ease, ease), transform var(--t-fast, 120ms) var(--ease, ease), border-color var(--t-fast, 120ms) var(--ease, ease);
 }
+.ys-gbtn:active { transform: translateY(1px); }
 .ys-gbtn:hover { box-shadow: 0 2px 10px rgba(0,0,0,.25); }
 .ys-gbtn:disabled { opacity: .6; cursor: default; box-shadow: none; }
 .ys-gicon { width: 22px; height: 22px; border-radius: 50%; background: conic-gradient(from -45deg, #ea4335 0 25%, #fbbc05 0 50%, #34a853 0 75%, #4285f4 0 100%); color: #fff; display: grid; place-items: center; font-weight: 900; font-size: 13px; }
@@ -71,6 +82,7 @@
   min-width: 250px; background: var(--bg-elev, #141b2d); color: var(--text, #e8edf7);
   border: 1px solid var(--border, #263049); border-radius: 12px; padding: 6px;
   box-shadow: var(--shadow, 0 12px 34px rgba(0,0,0,.38));
+  animation: ysPop var(--t, 180ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 .ys-menu-head { display: flex; gap: 10px; align-items: center; padding: 8px; }
 .ys-menu-id { min-width: 0; }
@@ -80,15 +92,15 @@
 .ys-mi { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text, #e8edf7); font: inherit; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
 .ys-mi:hover { background: var(--bg-soft, #1a2338); }
 
-.ys-perfil { max-width: 520px; padding: 0 0 20px; overflow: hidden; }
+.ys-perfil { max-width: 520px; padding: 0 0 20px; overflow: hidden; animation: ysPop var(--t-slow, 280ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)); will-change: opacity, transform, filter; }
 .ys-banner-edit { height: 130px; background: var(--accent, #5b8bff); background-size: cover; background-position: center; }
 .ys-perfil-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 0 20px; margin-top: -38px; flex-wrap: wrap; }
 .ys-avatar-big { border: 4px solid var(--bg-elev, #141b2d); border-radius: 50%; }
 .ys-perfil-head-btns { display: flex; gap: 8px; padding-bottom: 4px; }
 .ys-field { display: block; padding: 10px 20px 0; }
 .ys-field > span { display: block; font-size: 13px; color: var(--muted, #97a3bd); margin-bottom: 6px; }
-.ys-input { width: 100%; background: var(--bg-soft, #1a2338); color: var(--text, #e8edf7); border: 1px solid var(--border, #263049); border-radius: 9px; padding: 10px 12px; font: inherit; }
-.ys-input:focus { outline: 2px solid var(--accent, #5b8bff); outline-offset: 0; }
+.ys-input { width: 100%; background: var(--bg-soft, #1a2338); color: var(--text, #e8edf7); border: 1px solid var(--border, #263049); border-radius: 9px; padding: 10px 12px; font: inherit; transition: border-color var(--t-fast, 120ms) var(--ease, ease), box-shadow var(--t-fast, 120ms) var(--ease, ease); }
+.ys-input:focus { outline: none; border-color: var(--accent, #5b8bff); box-shadow: 0 0 0 3px rgba(91,139,255,.25); }
 .ys-banner-opts { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 .ys-opt { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; }
 .ys-opt input[type="color"] { width: 40px; height: 30px; border: 1px solid var(--border, #263049); border-radius: 7px; background: none; padding: 0; }
@@ -122,3 +134,62 @@
 }
 .ys-toast.ok { border-color: var(--ok, #34d399); }
 .ys-toast.erro { border-color: var(--danger, #f87171); }
+
+/* ---------------------------------------------------- animações da área de perfil */
+@keyframes ysRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes ysZoom { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: none; } }
+@keyframes ysChipIn { from { opacity: 0; transform: translateY(-6px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes ysToastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes ysRing { from { box-shadow: 0 0 0 0 rgba(91,139,255,.5); } to { box-shadow: 0 0 0 12px rgba(91,139,255,0); } }
+@keyframes ysBusy { from { background-position: -160% 0; } to { background-position: 260% 0; } }
+
+.ys-pwrap .ys-chip { animation: ysChipIn var(--t-slow) var(--ease-out) both; }
+.ys-chip { transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease), transform var(--t) var(--ease); }
+.ys-chip:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+.ys-chip .ys-avatar { transition: transform var(--t) var(--ease-out); }
+.ys-chip:hover .ys-avatar { transform: scale(1.07) rotate(-4deg); }
+
+.ys-menu > * { animation: ysRise var(--t) var(--ease-out) both; }
+.ys-menu > *:nth-child(2) { animation-delay: 45ms; }
+.ys-menu > *:nth-child(3) { animation-delay: 80ms; }
+.ys-menu > *:nth-child(4) { animation-delay: 110ms; }
+.ys-menu > *:nth-child(5) { animation-delay: 135ms; }
+.ys-menu > *:nth-child(n+6) { animation-delay: 160ms; }
+
+.ys-perfil .ys-banner-edit { animation: ysZoom var(--t-slow) var(--ease-out) both; }
+.ys-perfil .ys-perfil-head,
+.ys-perfil .ys-field,
+.ys-perfil .ys-form-err,
+.ys-perfil .ys-modal-actions { animation: ysRise var(--t-slow) var(--ease-out) both; }
+.ys-perfil .ys-perfil-head { animation-delay: 70ms; }
+.ys-perfil .ys-field:nth-child(3) { animation-delay: 130ms; }
+.ys-perfil .ys-field:nth-child(4) { animation-delay: 180ms; }
+.ys-perfil .ys-modal-actions { animation-delay: 230ms; }
+.ys-avatar-big { animation: ysRing 700ms var(--ease-out) 260ms both; border-radius: 50%; }
+.ys-avatar-big .ys-avatar { transition: transform var(--t) var(--ease-out); }
+.ys-perfil-head:hover .ys-avatar-big .ys-avatar { transform: scale(1.05); }
+.ys-opt input[type="color"] { transition: transform var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+.ys-opt input[type="color"]:hover { transform: scale(1.07); border-color: var(--accent, #5b8bff); }
+
+.ys-gate-card > * { animation: ysRise var(--t-slow) var(--ease-out) both; }
+.ys-gate-card > *:nth-child(2) { animation-delay: 60ms; }
+.ys-gate-card > *:nth-child(3) { animation-delay: 100ms; }
+.ys-gate-card > *:nth-child(n+4) { animation-delay: 140ms; }
+.ys-gate-logo { animation: ysZoom var(--t-slow) var(--ease-out) both; }
+
+.ys-toast { animation: ysToastIn var(--t-slow) var(--ease-out) both; }
+
+.ys-btn-primary:disabled {
+  opacity: .92; cursor: progress;
+  background-image: linear-gradient(100deg, transparent 32%, rgba(255,255,255,.3) 50%, transparent 68%);
+  background-size: 220% 100%;
+  animation: ysBusy 1.05s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ys-pwrap .ys-chip, .ys-menu > *, .ys-perfil .ys-banner-edit, .ys-perfil .ys-perfil-head,
+  .ys-perfil .ys-field, .ys-perfil .ys-modal-actions, .ys-avatar-big, .ys-gate-card > *,
+  .ys-gate-logo, .ys-toast, .ys-btn-primary:disabled,
+  .ys-modal, .ys-modal-bg, .ys-gate-card, .ys-perfil, .ys-menu { animation: none !important; }
+  .ys-chip:hover, .ys-chip .ys-avatar, .ys-opt input[type="color"] { transform: none; }
+}

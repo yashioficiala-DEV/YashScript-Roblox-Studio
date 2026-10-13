@@ -214,7 +214,10 @@
   };
 
   var fg = window.fengari;
-  var lua = fg.lua, lauxlib = fg.lauxlib, lualib = fg.lualib, to_luastring = fg.to_luastring;
+  function luauApi() {
+    if (!fg || !fg.lua || !fg.lauxlib || !fg.lualib) throw new Error("O motor Luau (Fengari) não carregou. Use o modo \"YashScript (nativo)\" ou \"JavaScript\", ou recarregue a página.");
+    return { lua: fg.lua, lauxlib: fg.lauxlib, lualib: fg.lualib, to_luastring: fg.to_luastring };
+  }
 
   var canvas = document.getElementById("tela");
   var hudEl = document.getElementById("hud");
@@ -269,6 +272,7 @@
   }
 
   function runLua(L, src, label) {
+    var A = luauApi(), lua = A.lua, lauxlib = A.lauxlib, to_luastring = A.to_luastring;
     var s = lauxlib.luaL_loadstring(L, to_luastring(src));
     if (s !== lua.LUA_OK) throw new Error(label + ": " + lua.lua_tolstring(L, -1, 0));
     s = lua.lua_pcall(L, 0, 0, 0);
@@ -285,6 +289,7 @@
   }
 
   function mensagemErro(L, idx) {
+    var A = luauApi(), lua = A.lua, to_luastring = A.to_luastring;
     idx = lua.lua_absindex(L, idx);
     if (lua.lua_istable(L, idx)) {
       lua.lua_getfield(L, idx, to_luastring("erro")); var e = lua.lua_tojsstring(L, -1); lua.lua_pop(L, 1);
@@ -296,6 +301,7 @@
   }
 
   function compilar(fonte) {
+    var A = luauApi(), lua = A.lua, lauxlib = A.lauxlib, lualib = A.lualib, to_luastring = A.to_luastring;
     var L = compState;
     if (!L) {
       L = lauxlib.luaL_newstate(); lualib.luaL_openlibs(L);
@@ -329,6 +335,7 @@
   }
 
   function criarRuntime(eng) {
+    var A = luauApi(), lua = A.lua, lauxlib = A.lauxlib, lualib = A.lualib, to_luastring = A.to_luastring;
     var L = lauxlib.luaL_newstate();
     lualib.luaL_openlibs(L);
     var realId = 0, porId = {};

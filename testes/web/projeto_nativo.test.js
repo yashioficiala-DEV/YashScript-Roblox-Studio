@@ -60,8 +60,8 @@ setTimeout(function () {
   codeEl.value = "criar bloco 'chao'\n    posicao = (0, 250)\n    tamanho = (400, 30)\nfim\ncriar esfera 'bola'\n    posicao = (200, 100)\n    cor = rgb(255, 80, 80)\nfim\nquando iniciar\n    mover bola para (120, 40)\nfim";
 
   var itens = Array.prototype.slice.call(doc.querySelectorAll(".menu-pop button"));
-  var alvo = itens.filter(function (n) { return n.textContent.trim() === "YashScript"; })[0];
-  ok("item de menu YashScript existe", !!alvo);
+  var alvo = itens.filter(function (n) { return n.textContent.trim() === "Modo: YashScript"; })[0];
+  ok("item de menu Modo: YashScript existe", !!alvo);
   if (alvo) alvo.click();
 
   dbg = win.__yashDebug();
@@ -113,7 +113,7 @@ setTimeout(function () {
     var cenaBtn = menus.filter(function (b) { return b.textContent.trim() === "Cena"; })[0];
     if (cenaBtn) cenaBtn.click();
     var pop = Array.prototype.slice.call(doc.querySelectorAll(".menu-pop button"));
-    var item = pop.filter(function (b) { return b.textContent.trim() === rot; })[0];
+    var item = pop.filter(function (b) { return b.textContent.trim().indexOf(rot) === 0; })[0];
     if (item) item.click();
   }
   function adicionarNoViaDialogo(nomeTipo) {

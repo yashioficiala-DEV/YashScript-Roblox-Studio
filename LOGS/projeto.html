@@ -84,11 +84,14 @@
     .dock-body { position:relative; flex:1; min-height:0; overflow:hidden; }
 
     .panel { position:absolute; inset:0; padding:4px; overflow:auto; }
-    .panel.vport { display:grid; place-items:center; padding:6px; overflow:hidden; background:var(--panel2); }
+    .panel.vport { display:block; padding:6px; overflow:hidden; background:var(--panel2); }
     .panel.scriptp { display:flex; padding:0; }
     .panel.saidap { display:flex; flex-direction:column; }
 
-    #tela { width:100%; height:100%; object-fit:contain; background:#1d2229; border:1px solid var(--line); border-radius:0; }
+    .vport-stack { position:relative; width:100%; height:100%; }
+    .vport-stack canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; border:1px solid var(--line); }
+    #tela3d { z-index:0; background:#1d2229; }
+    #tela { z-index:1; background:transparent; }
     textarea { flex:1; width:100%; height:100%; resize:none; background:#1d2229; color:var(--text); border:none; padding:9px 11px; font:12.5px/1.5 "Cascadia Mono",ui-monospace,Consolas,monospace; tab-size:4; }
     textarea:focus { outline:none; }
 
@@ -246,7 +249,7 @@
     <section class="dock zone" data-zona="centro">
       <div class="dock-tabs" data-tabs></div>
       <div class="dock-body" data-body>
-        <div class="panel vport" data-panel="cena" data-titulo="Cena" data-dot="obj"><canvas id="tela" width="900" height="520"></canvas></div>
+        <div class="panel vport" data-panel="cena" data-titulo="Cena" data-dot="obj"><div class="vport-stack"><canvas id="tela3d" width="900" height="520"></canvas><canvas id="tela" width="900" height="520"></canvas></div></div>
         <div class="panel scriptp" data-panel="script" data-titulo="jogo.yash" data-dot="script"><textarea id="codigo" spellcheck="false"></textarea></div>
       </div>
     </section>
@@ -293,6 +296,7 @@
   };
 
   var canvas = document.getElementById("tela");
+  var canvas3d = document.getElementById("tela3d");
   var hudEl = document.getElementById("hud");
   var errEl = document.getElementById("erro");
   var logEl = document.getElementById("log");
@@ -585,10 +589,14 @@
   }
   // O wireframe aparece também durante a execução: selecionar/arrastar mexe no
   // corpo vivo do motor, e ao parar a cena autorada volta a mandar.
+  function cenaTem3D() {
+    return !!(engine && engine.render3d && engine.render3d.ativo &&
+      (engine.objs || []).some(function (o) { return YashWeb.eh3d(o); }));
+  }
   function desenharWireframe() {
     if (!engine) return;
     var ctx = engine.ctx;
-    if (!emExecucao) desenharGrelha();
+    if (!emExecucao && !cenaTem3D()) desenharGrelha();
     if (!emExecucao && !cena.objetos.length) {
       ctx.save();
       ctx.fillStyle = "#8b9ab5";
@@ -615,7 +623,7 @@
   }
   function preview() {
     if (emExecucao) return;
-    if (!engine) engine = new YashWeb.Engine(canvas);
+    if (!engine) engine = new YashWeb.Engine(canvas, canvas3d);
     engine.carregar(cenaParaSalvar());
     engine.camera.alvo = null;
     aplicarAssetsNaCena(engine);
@@ -682,7 +690,7 @@
 
   function novoMotor() {
     if (engine) { if (engine.running) engine.parar(); }
-    engine = new YashWeb.Engine(canvas);
+    engine = new YashWeb.Engine(canvas, canvas3d);
     engine.carregar(cenaParaSalvar());
     aplicarAssetsNaCena(engine);
     engine.input.atach();
@@ -834,7 +842,8 @@
     { k: "w", label: "Largura", t: "num" },
     { k: "h", label: "Altura", t: "num" },
     { k: "rot", label: "Rotação", t: "num" },
-    { k: "z", label: "Ordem (Z)", t: "num" },
+    { k: "z", label: "Ordem (Z)", t: "num", dim: "2d" },
+    { k: "z", label: "Altura / Elevação", t: "num", dim: "3d" },
     { k: "alpha", label: "Opacidade", t: "num", min: 0, max: 1, passo: "0.05" },
     { k: "vx", label: "Velocidade X", t: "num" },
     { k: "vy", label: "Velocidade Y", t: "num" },

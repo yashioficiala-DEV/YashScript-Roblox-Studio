@@ -7,6 +7,9 @@ node_modules/
 # Pasta interna da ferramenta .qoder (vazia)
 .qoder/
 
+# Descritor local de publicacao do Qoder Sites (IDs internos)
+*.qoder.site
+
 # Backups
 *.bak-*
 

@@ -78,6 +78,32 @@ ok("desenha sem lancar excecao", lancou === null, lancou && lancou.stack);
 ok("emite um drawElements por no 3D (3)", gl._drawE === 3, "obtido " + gl._drawE);
 ok("emite o chao (grade) em drawArrays", gl._drawA >= 1, "obtido " + gl._drawA);
 
+console.log("navegação e picking 3D:");
+// cena isolada com um box: a camera (auto-frame) aponta para o centro dele, cai na tela no meio
+var umBox = [{ tipo: "box3d", x: 50, y: 50, w: 40, h: 40, profundidade: 40, cor: "#5b8bff" }];
+var nav = new YashWeb.Renderer3D(canvasComGL(mockGL()));
+nav.draw(umBox, "#0e1220", { cam: nav.cam });
+var alvoBox = YashWeb.pose3d(umBox[0]).pos;
+var sp = nav.projectar(alvoBox);
+ok("projectar devolve ponto na tela", sp && isFinite(sp.x) && isFinite(sp.y));
+ok("centro do box cai no meio da viewport (camera enquadra o alvo)", sp && Math.abs(sp.x - 400) < 3 && Math.abs(sp.y - 300) < 3, sp && (sp.x + "," + sp.y));
+var alvoTela = nav.hitTest(umBox, sp.x, sp.y);
+ok("hitTest seleciona o no sob o cursor", alvoTela === umBox[0]);
+ok("hitTest em canto vazio nao pega nada", nav.hitTest(umBox, 5, 5) === null);
+var yawAntes = nav.cam.yaw;
+nav.orbitar(40, 0);
+ok("orbitar muda o yaw e fixa a camera", nav.cam.yaw !== yawAntes && nav.cam.pinned === true);
+var distAntes = nav.cam.dist;
+nav.zoom(2);
+ok("zoom aproxima/afasta (dist muda)", nav.cam.dist !== distAntes);
+nav.vista("cima");
+ok("vista('cima') inclina a camera para baixo", nav.cam.pitch > 1);
+nav.enquadrar();
+ok("enquadrar solta a camera (auto-frame de novo)", nav.cam.pinned === false);
+nav.draw(umBox, "#0e1220", { cam: nav.cam }); // repinta com a camera nova
+var noChao = nav.chaoEm(sp.x, sp.y, nav.alturaBase(umBox[0]));
+ok("chaoEm devolve um ponto do plano sob o cursor", noChao && isFinite(noChao[0]) && isFinite(noChao[2]));
+
 console.log("fallback sem WebGL:");
 var semGl = new YashWeb.Renderer3D({ width: 10, height: 10, getContext: function () { return null; } });
 ok("sem WebGL o renderer fica inativo", semGl.ativo === false);

@@ -279,7 +279,8 @@
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
     this._grid = this._criaGrade(1200, 100);
-    this.cam = { yaw: -35 * GRAUS, pitch: 32 * GRAUS, dist: 600, alvo: [0, 0, 0] };
+    this.fov = 50 * GRAUS;
+    this.cam = { yaw: -35 * GRAUS, pitch: 32 * GRAUS, dist: 600, alvo: [0, 0, 0], pinned: false };
   }
   Renderer3D.prototype._criaGrade = function (meio, passo) {
     var gl = this.gl, p = [], n = [];
@@ -340,17 +341,17 @@
       raio = Math.max(80, Math.max(maxX - minX, maxZ - minZ) * 0.7);
     }
     var cam = (camera3d && camera3d.cam) || this.cam;
-    cam.alvo = alvo;
+    if (!cam.pinned) { cam.alvo = alvo; cam.dist = Math.max(150, raio * 2.4); }
     var dist = cam.dist || raio * 2.4;
-    if (camera3d && camera3d.autoEnquadrar) cam.dist = dist = Math.max(150, raio * 2.4);
     var cy = Math.cos(cam.pitch), sy = Math.sin(cam.pitch);
-    var eye = [alvo[0] + dist * cy * Math.sin(cam.yaw), alvo[1] + dist * sy, alvo[2] + dist * cy * Math.cos(cam.yaw)];
-    var proj = mPersp(50 * GRAUS, (w || 1) / (h || 1), 1, 8000);
-    var view = mLookAt(eye, alvo, [0, 1, 0]);
+    var eye = [cam.alvo[0] + dist * cy * Math.sin(cam.yaw), cam.alvo[1] + dist * sy, cam.alvo[2] + dist * cy * Math.cos(cam.yaw)];
+    var proj = mPersp(this.fov, (w || 1) / (h || 1), 1, 8000);
+    var view = mLookAt(eye, cam.alvo, [0, 1, 0]);
     var pv = mMul(proj, view);
+    this._pv = pv; this._eye = eye; this._alvoRef = cam.alvo;
     gl.uniform3fv(this.uLight, [0.4, 0.9, 0.35]);
     gl.uniform3fv(this.uCam, eye);
-    if (this._grid) this._desenhaGrade(pv, alvo);
+    if (this._grid) this._desenhaGrade(pv, cam.alvo);
 
     vivos.forEach(function (o) {
       var ps = pose3d(o);
@@ -362,6 +363,95 @@
       this._desenhaMalha(m, modelo, pv, hexParaRgb(o.cor));
     }, this);
   };
+
+  // ---- navegação e seleção no editor 3D (como no Godot) ----
+  function vSub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function vCross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function vNorm(a) { var l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+  Renderer3D.prototype.base = function () {
+    var f = vNorm(vSub(this._alvoRef, this._eye));
+    var r = vNorm(vCross(f, [0, 1, 0]));
+    var u = vCross(r, f);
+    return { f: f, r: r, u: u };
+  };
+  Renderer3D.prototype.orbitar = function (dx, dy) {
+    this.cam.pinned = true;
+    this.cam.yaw -= dx * 0.008;
+    this.cam.pitch = limitar(this.cam.pitch + dy * 0.008, -1.45, 1.45);
+  };
+  Renderer3D.prototype.pan = function (dx, dy) {
+    var b = this.base(), k = this.cam.dist / 500;
+    var a = this.cam.alvo;
+    this.cam.pinned = true;
+    this.cam.alvo = [a[0] - (b.r[0] * dx - b.u[0] * dy) * k, a[1] - (b.r[1] * dx - b.u[1] * dy) * k, a[2] - (b.r[2] * dx - b.u[2] * dy) * k];
+  };
+  Renderer3D.prototype.zoom = function (dz) { this.cam.pinned = true; this.cam.dist = limitar(this.cam.dist * (1 + dz * 0.12), 60, 6000); };
+  Renderer3D.prototype.enquadrar = function () { this.cam.pinned = false; };
+  Renderer3D.prototype.focar = function (pos) { this.cam.pinned = true; this.cam.alvo = [pos[0], pos[1], pos[2]]; };
+  Renderer3D.prototype.vista = function (nome) {
+    var g = Math.PI / 2;
+    this.cam.pinned = true; this.cam.yaw = 0; this.cam.pitch = 0;
+    if (nome === "frente") { this.cam.yaw = 0; this.cam.pitch = 0; }
+    else if (nome === "direita") { this.cam.yaw = g; this.cam.pitch = 0; }
+    else if (nome === "cima") { this.cam.yaw = 0; this.cam.pitch = 1.4; }
+    else if (nome === "centro") { this.cam.yaw = -35 * GRAUS; this.cam.pitch = 32 * GRAUS; }
+  };
+  // projeta um ponto do mundo para pixels da canvas
+  Renderer3D.prototype.projectar = function (p) {
+    if (!this._pv) return null;
+    var m = this._pv, w = this.canvas.width, h = this.canvas.height;
+    var cx = m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12];
+    var cyv = m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13];
+    var cw = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15];
+    if (!cw) return null;
+    return { x: (cx / cw + 1) / 2 * w, y: (1 - (cyv / cw + 1) / 2) * h };
+  };
+  // os 8 cantos (espaço mundo) da caixa delimitadora de um nó 3D
+  Renderer3D.prototype.cantos = function (o) {
+    var ps = pose3d(o), m = mModelo(ps.pos, ps.rot, ps.esc), pts = [];
+    for (var i = 0; i < 8; i++) {
+      var x = (i & 1) ? .5 : -.5, y = (i & 2) ? .5 : -.5, z = (i & 4) ? .5 : -.5;
+      pts.push([m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14]]);
+    }
+    return pts;
+  };
+  Renderer3D.prototype.screenBox3D = function (o) {
+    var pts = this.cantos(o).map(this.projectar, this).filter(Boolean);
+    if (!pts.length) return null;
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    pts.forEach(function (p) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); });
+    return { x0: x0, y0: y0, x1: x1, y1: y1, pts: pts };
+  };
+  Renderer3D.prototype.raioDe = function (px, py) {
+    if (!this._eye) return null;
+    var w = this.canvas.width, h = this.canvas.height;
+    var nx = px / w * 2 - 1, ny = 1 - py / h * 2;
+    var b = this.base(), tanF = Math.tan(this.fov / 2), asp = w / (h || 1);
+    var d = vNorm([b.f[0] + b.r[0] * nx * tanF * asp + b.u[0] * ny * tanF,
+      b.f[1] + b.r[1] * nx * tanF * asp + b.u[1] * ny * tanF,
+      b.f[2] + b.r[2] * nx * tanF * asp + b.u[2] * ny * tanF]);
+    return { o: this._eye, d: d };
+  };
+  // ponto do chão (plano horizontal na altura altY) sob um pixel da tela
+  Renderer3D.prototype.chaoEm = function (px, py, altY) {
+    var r = this.raioDe(px, py); if (!r || Math.abs(r.d[1]) < 1e-5) return null;
+    var t = (altY - r.o[1]) / r.d[1]; if (t < 0) return null;
+    return [r.o[0] + r.d[0] * t, altY, r.o[2] + r.d[2] * t];
+  };
+  Renderer3D.prototype.hitTest = function (objs, px, py) {
+    if (!this._eye) return null;
+    var melhor = null, mDist = Infinity;
+    for (var i = 0; i < objs.length; i++) {
+      var o = objs[i]; if (!eh3d(o) || o._dead || o.visivel === false) continue;
+      var s = this.screenBox3D(o); if (!s) continue;
+      if (px < s.x0 || px > s.x1 || py < s.y0 || py > s.y1) continue;
+      var ps = pose3d(o), d = Math.hypot(ps.pos[0] - this._eye[0], ps.pos[1] - this._eye[1], ps.pos[2] - this._eye[2]);
+      if (d < mDist) { mDist = d; melhor = o; }
+    }
+    return melhor;
+  };
+  // altura do chão de um nó (onde a base encosta), usada para arrastar no plano XZ
+  Renderer3D.prototype.alturaBase = function (o) { var p = pose3d(o); return p.pos[1] - p.esc[1] / 2; };
 
   function desenhar(ctx, o) {
     if (o._dead || o.visivel === false) return;

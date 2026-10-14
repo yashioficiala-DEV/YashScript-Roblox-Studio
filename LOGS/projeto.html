@@ -323,6 +323,7 @@
   var mouseX = 0, mouseY = 0;
   var selectedId = null, inspFields = null, inspRenderId = "__none__";
   var arrasto = null;
+  var nav3 = null;   // navegação de câmera no editor 3D (órbita / pan)
 
   var paineis = {}, zonas = {}, arrastando = null;
   var abasFechadas = {}, flutuantes = {}, arrastoAba = null;
@@ -589,9 +590,24 @@
   }
   // O wireframe aparece também durante a execução: selecionar/arrastar mexe no
   // corpo vivo do motor, e ao parar a cena autorada volta a mandar.
-  function cenaTem3D() {
-    return !!(engine && engine.render3d && engine.render3d.ativo &&
-      (engine.objs || []).some(function (o) { return YashWeb.eh3d(o); }));
+  function r3() { return (engine && engine.render3d && engine.render3d.ativo) ? engine.render3d : null; }
+  function cenaTem3D() { return !!r3() && listaAtiva().some(function (o) { return YashWeb.eh3d(o); }); }
+  function editor3D() { return !!(r3() && projetoDim === "3d"); }
+  var ARESTAS_BOX = [[0, 1], [1, 3], [3, 2], [2, 0], [4, 5], [5, 7], [7, 6], [6, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+  function desenharContorno3D(ctx, sel) {
+    var r = r3(); if (!r) return;
+    var sb = r.screenBox3D(sel); if (!sb || !sb.pts || sb.pts.length < 8) return;
+    ctx.save();
+    ctx.strokeStyle = emExecucao ? "#6fe3a5" : "#70bafa";
+    ctx.lineWidth = 1.5;
+    ARESTAS_BOX.forEach(function (a) {
+      var p = sb.pts[a[0]], q = sb.pts[a[1]];
+      if (!p || !q) return;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+    });
+    var centro = r.projectar(YashWeb.pose3d(sel).pos);
+    if (centro) { ctx.fillStyle = emExecucao ? "#6fe3a5" : "#70bafa"; ctx.fillRect(centro.x - 2.5, centro.y - 2.5, 5, 5); }
+    ctx.restore();
   }
   function desenharWireframe() {
     if (!engine) return;
@@ -602,11 +618,12 @@
       ctx.fillStyle = "#8b9ab5";
       ctx.font = "14px ui-monospace, Consolas, monospace";
       ctx.textAlign = "center";
-      ctx.fillText("cena vazia — use “+ nó” na aba Nós, ou ▶ Rodar para executar o script", canvas.width / 2, canvas.height / 2);
+      ctx.fillText("botão direito na cena para adicionar nós — arraste para mover", canvas.width / 2, canvas.height / 2);
       ctx.restore();
     }
     var sel = objSelecionado();
     if (!sel) return;
+    if (cenaTem3D() && YashWeb.eh3d(sel)) { desenharContorno3D(ctx, sel); return; }
     var r = rectNaTela(sel);
     ctx.save();
     ctx.strokeStyle = emExecucao ? "#6fe3a5" : "#7aa2ff";
@@ -1672,7 +1689,7 @@
   // botão direito na viewport (canvas) cria/edita nós na posição do clique
   canvas.addEventListener("contextmenu", function (e) {
     e.preventDefault(); e.stopPropagation();
-    var p = coordsDoEvento(e), atingido = noSob(p.x, p.y);
+    var p = coordsDoEvento(e), atingido = editor3D() ? r3().hitTest(listaAtiva(), p.x, p.y) : noSob(p.x, p.y);
     if (atingido && atingido.id !== selectedId) selecionar(atingido.id);
     noContexto(atingido || null, { clientX: e.clientX, clientY: e.clientY });
     ctxUltimaPos = { x: p.x, y: p.y };
@@ -1713,12 +1730,25 @@
   function podeEditar() { return !!engine && !!projetoId; }
 
   canvas.addEventListener("mousedown", function (e) {
-    if (e.button !== 0 || !podeEditar()) return;
-    var p = coordsDoEvento(e), no = objSelecionado();
+    if (!podeEditar()) return;
+    var em3 = editor3D(), r = em3 ? r3() : null;
+    if (e.button === 1) { if (em3) { nav3 = { pan: e.shiftKey, x: e.clientX, y: e.clientY }; e.preventDefault(); } return; }
+    if (e.button !== 0) return;
+    var p = coordsDoEvento(e);
+    if (em3) {
+      var atingido = r.hitTest(listaAtiva(), p.x, p.y);
+      if (atingido) {
+        if (atingido.id !== selectedId) selecionar(atingido.id);
+        if (!emExecucao) arrasto = { no: atingido, modo: "mover3d", base: r.alturaBase(atingido), mudou: false };
+        e.preventDefault(); return;
+      }
+      arrasto = null; selecionar(null); e.preventDefault(); return;
+    }
+    var no = objSelecionado();
     var alca = no ? alcaSob(no, p.x, p.y) : null;
     if (!alca) {
-      var atingido = noSob(p.x, p.y);
-      if (atingido) { if (atingido.id !== selectedId) selecionar(atingido.id); arrasto = { no: atingido, modo: "mover", px: p.x, py: p.y, x0: atingido.x, y0: atingido.y, w0: atingido.w, h0: atingido.h, mudou: false }; }
+      var ating = noSob(p.x, p.y);
+      if (ating) { if (ating.id !== selectedId) selecionar(ating.id); arrasto = { no: ating, modo: "mover", px: p.x, py: p.y, x0: ating.x, y0: ating.y, w0: ating.w, h0: ating.h, mudou: false }; }
       else { arrasto = null; selecionar(null); }
       e.preventDefault();
       return;
@@ -1728,11 +1758,23 @@
   });
 
   window.addEventListener("mousemove", function (e) {
+    if (nav3) {
+      var rn = r3();
+      if (rn) { if (nav3.pan) rn.pan(e.clientX - nav3.x, e.clientY - nav3.y); else rn.orbitar(e.clientX - nav3.x, e.clientY - nav3.y); }
+      nav3.x = e.clientX; nav3.y = e.clientY;
+      if (!emExecucao) preview();
+      return;
+    }
     if (!arrasto || !podeEditar()) return;
     var p = coordsDoEvento(e), no = arrasto.no;
-    var dx = p.x - arrasto.px, dy = p.y - arrasto.py;
+    var dx = p.x - (arrasto.px || p.x), dy = p.y - (arrasto.py || p.y);
     var passo = e.shiftKey ? GRADE : 1;
     function arred(v) { return Math.round(v / passo) * passo; }
+    if (arrasto.modo === "mover3d") {
+      var pt = r3().chaoEm(p.x, p.y, arrasto.base);
+      if (pt) { no.x = Math.round(pt[0] - (no.w || 0) / 2); no.y = Math.round(pt[2] - (no.h || 0) / 2); }
+      arrasto.mudou = true; preview(); renderInspector(false); return;
+    }
     if (arrasto.modo === "mover") {
       no.x = arred(arrasto.x0 + dx / zoomAtual());
       no.y = arred(arrasto.y0 + dy / zoomAtual());
@@ -1753,6 +1795,7 @@
   });
 
   window.addEventListener("mouseup", function () {
+    if (nav3) { nav3 = null; return; }
     if (!arrasto) return;
     var mudou = arrasto.mudou;
     arrasto = null;
@@ -1760,6 +1803,14 @@
     marcarDirty();
     setStatus("cena ajustada");
   });
+
+  canvas.addEventListener("wheel", function (e) {
+    if (!editor3D()) return;
+    e.preventDefault();
+    r3().zoom(e.deltaY > 0 ? 1 : -1);
+    if (!emExecucao) preview();
+  }, { passive: false });
+
 
   canvas.addEventListener("mousemove", function (e) {
     var p = coordsDoEvento(e);
@@ -1776,6 +1827,21 @@
     if (!podeEditar()) return;
     var alvo = e.target;
     if (alvo && alvo.tagName && (alvo.tagName === "INPUT" || alvo.tagName === "TEXTAREA" || alvo.tagName === "SELECT")) return;
+    // navegação de câmera no 3D, como nas engines: F foca, 1/3/7 vistas, 5 volta à perspectiva de trabalho
+    var rr = r3();
+    if (rr && editor3D()) {
+      var sel = objSelecionado();
+      if (e.key === "f" || e.key === "F") {
+        if (sel && YashWeb.eh3d(sel)) rr.focar(YashWeb.pose3d(sel).pos); else rr.enquadrar();
+        e.preventDefault(); if (!emExecucao) preview(); return;
+      }
+      var vistas = { "1": "frente", "3": "direita", "7": "cima", "5": "centro", "9": "centro" };
+      if (vistas[e.key]) {
+        rr.vista(vistas[e.key]);
+        if (sel && YashWeb.eh3d(sel)) rr.focar(YashWeb.pose3d(sel).pos);
+        e.preventDefault(); if (!emExecucao) preview(); return;
+      }
+    }
     var no = objSelecionado();
     if (!no) return;
     if (!emExecucao && (e.key === "Delete" || e.key === "Backspace")) { e.preventDefault(); removerNoSelecionado(); return; }

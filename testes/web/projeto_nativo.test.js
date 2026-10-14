@@ -65,7 +65,12 @@ setTimeout(function () {
 
   dbg = win.__yashDebug();
   ok("modo mudou para yashnativo", dbg && dbg.modo === "yashnativo", dbg && dbg.modo);
-  ok("duas entidades no motor", dbg && dbg.objs === 2, dbg && dbg.objs);
+  ok("estudio abre parado", dbg && dbg.emExecucao === false, JSON.stringify(dbg));
+  ok("parado nao ha entidades", dbg && dbg.objs === 0, dbg && dbg.objs);
+
+  doc.getElementById("rodar").click();
+  dbg = win.__yashDebug();
+  ok("rodar cria as duas entidades", dbg && dbg.emExecucao === true && dbg.objs === 2, JSON.stringify(dbg));
 
   for (var k = 0; k < 5; k++) { var cb = win.__frames.shift(); if (cb) cb(16.7 * (k + 1)); }
   dbg = win.__yashDebug();
@@ -83,6 +88,18 @@ setTimeout(function () {
     var l = linhas.filter(function (r) { return r.textContent.indexOf(prefixo) === 0; })[0];
     return l && l.querySelector("input, select");
   }
+  var tela = doc.getElementById("tela");
+  function mouse(type, x, y, extras) {
+    var o = { clientX: x, clientY: y, button: 0, bubbles: true };
+    if (extras) for (var k in extras) o[k] = extras[k];
+    tela.dispatchEvent(new win.MouseEvent(type, o));
+  }
+  function tecla(key, extras) {
+    var o = { key: key, bubbles: true };
+    if (extras) for (var k in extras) o[k] = extras[k];
+    win.dispatchEvent(new win.KeyboardEvent("keydown", o));
+  }
+
   doc.getElementById("parar").click();
   dbg = win.__yashDebug();
   ok("parar volta para a cena", dbg && dbg.emExecucao === false && dbg.nos === 0, JSON.stringify(dbg));
@@ -103,19 +120,72 @@ setTimeout(function () {
   dbg = win.__yashDebug();
   ok("inspetor escreveu no no da cena", dbg && dbg.cena.objetos[0].x === 123, dbg && dbg.cena.objetos[0].x);
 
+  // --- wireframe: selecionar, arrastar, alcas, teclado ---
+  mouse("mousedown", 141, 260);            // centro do no (123..159, 242..278)
+  mouse("mousemove", 200, 300);
+  mouse("mouseup", 200, 300);
+  dbg = win.__yashDebug();
+  ok("arrastar no wireframe move o no da cena", dbg && dbg.cena.objetos[0].x === 182 && dbg.cena.objetos[0].y === 282, JSON.stringify(dbg.cena.objetos[0]));
+
+  mouse("mousedown", 218, 318);           // alca sudeste
+  mouse("mousemove", 238, 338);
+  mouse("mouseup", 238, 338);
+  dbg = win.__yashDebug();
+  ok("arrastar a alca redimensiona o no", dbg && dbg.cena.objetos[0].w === 56 && dbg.cena.objetos[0].h === 56, JSON.stringify(dbg.cena.objetos[0]));
+  ok("redimensionar nao moveu o canto oposto", dbg && dbg.cena.objetos[0].x === 182 && dbg.cena.objetos[0].y === 282, JSON.stringify(dbg.cena.objetos[0]));
+
+  mouse("mousedown", 182, 310);           // alca oeste: so a borda esquerda
+  mouse("mousemove", 162, 330);
+  mouse("mouseup", 162, 330);
+  dbg = win.__yashDebug();
+  ok("alca oeste estica para o oeste", dbg && dbg.cena.objetos[0].x === 162 && dbg.cena.objetos[0].w === 76, JSON.stringify(dbg.cena.objetos[0]));
+  ok("alca oeste nao mexe na base", dbg && dbg.cena.objetos[0].y === 282 && dbg.cena.objetos[0].h === 56, JSON.stringify(dbg.cena.objetos[0]));
+
+  mouse("mousedown", 162, 338);           // alca sudoeste: canto (162..238, 282..338)
+  mouse("mousemove", 142, 358);
+  mouse("mouseup", 142, 358);
+  dbg = win.__yashDebug();
+  ok("alca sudoeste arrasta a esquerda junto", dbg && dbg.cena.objetos[0].x === 142 && dbg.cena.objetos[0].w === 96, JSON.stringify(dbg.cena.objetos[0]));
+  ok("alca sudoeste mantem o topo e estica a base", dbg && dbg.cena.objetos[0].y === 282 && dbg.cena.objetos[0].h === 76, JSON.stringify(dbg.cena.objetos[0]));
+
+  mouse("mousedown", 700, 60);            // vazio
+  mouse("mouseup", 700, 60);
+  dbg = win.__yashDebug();
+  ok("clicar no vazio desmarca", dbg && dbg.selecionado === null, JSON.stringify(dbg.selecionado));
+
+  mouse("mousedown", 210, 310);           // re-seleciona pelo canvas
+  mouse("mouseup", 210, 310);
+  dbg = win.__yashDebug();
+  ok("clicar no no seleciona pelo canvas", dbg && dbg.selecionado && dbg.selecionado.nome === "bola", JSON.stringify(dbg.selecionado));
+  tecla("ArrowRight", { shiftKey: true });
+  dbg = win.__yashDebug();
+  ok("seta com shift empurra na grade", dbg && dbg.cena.objetos[0].x === 182, dbg && dbg.cena.objetos[0].x);
+  tecla("ArrowLeft");
+  dbg = win.__yashDebug();
+  ok("seta sozinho empurra 1 pixel", dbg && dbg.cena.objetos[0].x === 181, dbg && dbg.cena.objetos[0].x);
+
   doc.getElementById("salvar").click();
   var salvo = (win.__salvos || [])[0];
   ok("salvar envia a cena junto", !!salvo && !!salvo.cena && salvo.cena.objetos.length === 1, JSON.stringify(salvo && salvo.cena));
-  ok("a cena salva traz o no editado", !!salvo && salvo.cena.objetos[0].nome === "bola" && salvo.cena.objetos[0].x === 123, JSON.stringify(salvo && salvo.cena.objetos[0]));
+  ok("a cena salva traz o no editado no wireframe", !!salvo && salvo.cena.objetos[0].nome === "bola" && salvo.cena.objetos[0].x === 181 && salvo.cena.objetos[0].w === 96, JSON.stringify(salvo && salvo.cena.objetos[0]));
 
   doc.getElementById("rodar").click();
   dbg = win.__yashDebug();
   ok("execucao reusa o no da cena (2 nos, nao 3)", dbg && dbg.emExecucao === true && dbg.objs === 2, JSON.stringify(dbg));
   ok("saida explica que o no da cena foi adotado", doc.getElementById("log").textContent.indexOf("já existia na cena") >= 0, doc.getElementById("log").textContent);
 
+  // edicao ao vivo durante a execucao: bola esta em (120,40) tamanho 36 (o script mandou para la)
+  var dirtyAntes = win.__yashDebug().dirty;
+  mouse("mousedown", 138, 58);
+  mouse("mousemove", 188, 108);
+  mouse("mouseup", 188, 108);
+  dbg = win.__yashDebug();
+  ok("arrastar durante a execucao move o corpo vivo", dbg && dbg.selecionado && dbg.selecionado.x === 170 && dbg.selecionado.y === 90, JSON.stringify(dbg.selecionado));
+  ok("editar na execucao nao grava na cena", dbg && dbg.cena.objetos[0].x === 181 && dbg.dirty === dirtyAntes, JSON.stringify(dbg.cena.objetos[0]) + " dirty=" + dbg.dirty);
+
   doc.getElementById("parar").click();
   dbg = win.__yashDebug();
-  ok("executar nao altera a cena autorada", dbg && dbg.cena.objetos[0].x === 123, dbg && dbg.cena.objetos[0].x);
+  ok("executar e arrastar nao alteram a cena autorada", dbg && dbg.cena.objetos[0].x === 181, dbg && dbg.cena.objetos[0].x);
   ok("parar volta a mostrar so a cena", dbg && dbg.objs === 1 && dbg.nos === 1, JSON.stringify(dbg));
 
   doc.getElementById("rodar").click();
@@ -125,6 +195,10 @@ setTimeout(function () {
   if (addBloco) addBloco.click();
   dbg = win.__yashDebug();
   ok("mexer na cena durante a execucao para o jogo", dbg && dbg.emExecucao === false && dbg.nos === 2, JSON.stringify(dbg));
+
+  tecla("Delete");
+  dbg = win.__yashDebug();
+  ok("Delete remove o no selecionado", dbg && dbg.nos === 1 && dbg.cena.objetos[0].nome === "bola", JSON.stringify(dbg.cena.objetos.map(function (o) { return o.nome; })));
 
   console.log("\n" + (total - falhas) + " ok, " + falhas + " falhas");
   process.exit(falhas ? 1 : 0);

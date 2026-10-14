@@ -240,6 +240,7 @@
   var raf = 0, lastT = 0, acc = 0, frames = 0;
   var mouseX = 0, mouseY = 0;
   var selectedId = null, inspFields = null, inspRenderId = "__none__";
+  var arrasto = null;
 
   var paineis = {}, zonas = {}, arrastando = null;
 
@@ -368,12 +369,103 @@
     renderArvore(); renderInspector(true); preview();
     return copia;
   }
+  var ALCA = 8, GRADE = 40;
+  function zoomAtual() { return (engine && engine.camera && engine.camera.zoom) || 1; }
+  function paraTela(x, y) {
+    var cam = (engine && engine.camera) || { x: canvas.width / 2, y: canvas.height / 2 };
+    var z = zoomAtual();
+    return { x: (x - cam.x) * z + canvas.width / 2, y: (y - cam.y) * z + canvas.height / 2 };
+  }
+  function paraMundo(px, py) {
+    var cam = (engine && engine.camera) || { x: canvas.width / 2, y: canvas.height / 2 };
+    var z = zoomAtual();
+    return { x: (px - canvas.width / 2) / z + cam.x, y: (py - canvas.height / 2) / z + cam.y };
+  }
+  function rectNaTela(o) {
+    var a = paraTela(o.x, o.y), b = paraTela(o.x + (o.w || 0), o.y + (o.h || 0));
+    return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
+  }
+  function alcasDe(o) {
+    var r = rectNaTela(o), mx = r.x + r.w / 2, my = r.y + r.h / 2;
+    return [
+      { nome: "nw", x: r.x, y: r.y }, { nome: "n", x: mx, y: r.y }, { nome: "ne", x: r.x + r.w, y: r.y },
+      { nome: "e", x: r.x + r.w, y: my }, { nome: "se", x: r.x + r.w, y: r.y + r.h },
+      { nome: "s", x: mx, y: r.y + r.h }, { nome: "sw", x: r.x, y: r.y + r.h }, { nome: "o", x: r.x, y: my }
+    ];
+  }
+  var LADOS = {
+    nw: { o: 1, n: 1 }, n: { n: 1 }, ne: { e: 1, n: 1 }, e: { e: 1 },
+    se: { e: 1, s: 1 }, s: { s: 1 }, sw: { o: 1, s: 1 }, o: { o: 1 }
+  };
+  var CURSORES = { nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize", n: "ns-resize", s: "ns-resize", e: "ew-resize", o: "ew-resize" };
+  function alcaSob(o, px, py) {
+    var h = ALCA / 2;
+    var achadas = alcasDe(o).filter(function (a) { return px >= a.x - h && px <= a.x + h && py >= a.y - h && py <= a.y + h; });
+    return achadas.length ? achadas[0].nome : null;
+  }
+  function noSob(px, py) {
+    var m = paraMundo(px, py), vivos = [];
+    listaAtiva().forEach(function (o, i) {
+      if (o.visivel === false || !o.w || !o.h) return;
+      if (m.x < o.x || m.x > o.x + o.w || m.y < o.y || m.y > o.y + o.h) return;
+      vivos.push({ o: o, ordem: i });
+    });
+    vivos.sort(function (a, b) { return ((a.o.z || 0) - (b.o.z || 0)) || (a.ordem - b.ordem); });
+    return vivos.length ? vivos[vivos.length - 1].o : null;
+  }
+  function desenharGrelha() {
+    var ctx = engine.ctx, w = canvas.width, h = canvas.height;
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    for (var gx = Math.floor(paraMundo(0, 0).x / GRADE) * GRADE; paraTela(gx, 0).x <= w; gx += GRADE) {
+      var sx = Math.round(paraTela(gx, 0).x) + 0.5;
+      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, h); ctx.stroke();
+    }
+    for (var gy = Math.floor(paraMundo(0, 0).y / GRADE) * GRADE; paraTela(0, gy).y <= h; gy += GRADE) {
+      var sy = Math.round(paraTela(0, gy).y) + 0.5;
+      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(w, sy); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // O wireframe aparece também durante a execução: selecionar/arrastar mexe no
+  // corpo vivo do motor, e ao parar a cena autorada volta a mandar.
+  function desenharWireframe() {
+    if (!engine) return;
+    var ctx = engine.ctx;
+    if (!emExecucao) desenharGrelha();
+    if (!emExecucao && !cena.objetos.length) {
+      ctx.save();
+      ctx.fillStyle = "#8b9ab5";
+      ctx.font = "14px ui-monospace, Consolas, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("cena vazia — use “+ nó” na aba Nós, ou ▶ Rodar para executar o script", canvas.width / 2, canvas.height / 2);
+      ctx.restore();
+    }
+    var sel = objSelecionado();
+    if (!sel) return;
+    var r = rectNaTela(sel);
+    ctx.save();
+    ctx.strokeStyle = emExecucao ? "#6fe3a5" : "#7aa2ff";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w, r.h);
+    ctx.fillStyle = emExecucao ? "rgba(111,227,165,0.12)" : "rgba(122,162,255,0.12)";
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.fillStyle = "#0b0f1a";
+    alcasDe(sel).forEach(function (a) {
+      ctx.fillRect(a.x - ALCA / 2, a.y - ALCA / 2, ALCA, ALCA);
+      ctx.strokeRect(Math.round(a.x - ALCA / 2) + 0.5, Math.round(a.y - ALCA / 2) + 0.5, ALCA, ALCA);
+    });
+    ctx.restore();
+  }
   function preview() {
     if (emExecucao) return;
     if (!engine) engine = new YashWeb.Engine(canvas);
     engine.carregar(cenaParaSalvar());
     engine.camera.alvo = null;
     engine.update(0);
+    desenharWireframe();
+    hudEl.textContent = "parado";
   }
 
   function mostrarErro(msg) {
@@ -424,6 +516,7 @@
       catch (e) { mostrarErro(formatarErro(e)); parar(); return; }
     }
     engine.update(dt);
+    desenharWireframe();
     if (modo === "yashnativo") { renderArvore(); renderInspector(false); }
     raf = requestAnimationFrame(loop);
   }
@@ -444,7 +537,7 @@
     var hooks;
     try { hooks = new Function("ys", "engine", "objs", codeEl.value); engine.script(hooks); }
     catch (e) { mostrarErro("Erro no script:\n" + (e && e.message ? e.message : String(e))); return; }
-    engine.onTick = function (fps) { hudEl.textContent = fps + " fps"; };
+    engine.onTick = function (fps) { hudEl.textContent = fps + " fps"; desenharWireframe(); };
     engine.iniciar();
     emExecucao = true;
     renderArvore();
@@ -601,9 +694,15 @@
     if (emExecucao && engine) return engine.objs.filter(function (o) { return !o._dead; });
     return cena.objetos;
   }
+  var arvoreSig = "";
   function renderArvore() {
+    var lista = listaAtiva();
+    var sig = (emExecucao ? "R" : "C") + "|" + String(selectedId) + "|" +
+      lista.map(function (o) { return o.id + ":" + (o.nome || "") + ":" + o.tipo; }).join(",");
+    if (sig === arvoreSig) return;
+    arvoreSig = sig;
     treeEl.innerHTML = "";
-    var nos = listaAtiva().map(function (o) {
+    var nos = lista.map(function (o) {
       var rot = o.nome || (o.tag ? "#" + o.tag : String(o.id || "objeto"));
       var li = item(rot, "obj", NOMES_TIPO[o.tipo] || o.tipo, function () { selecionar(o.id); });
       if (o.id === selectedId) li.firstChild.className += " sel";
@@ -612,16 +711,13 @@
     treeEl.appendChild(ramo(emExecucao ? "Cena (em execução)" : "Cena", nos));
 
     treeToolsEl.innerHTML = "";
-    if (emExecucao) {
-      treeToolsEl.appendChild(el("button", { type: "button", text: "⏹ Parar para editar", onclick: pararExecucao }));
-    } else {
-      TIPOS_NO.slice(0, 4).forEach(function (t) {
-        treeToolsEl.appendChild(el("button", { type: "button", text: "+ " + NOMES_TIPO[t], onclick: function () { adicionarNo(t); } }));
-      });
-      var rem = el("button", { type: "button", text: "− remover nó", onclick: removerNoSelecionado });
-      rem.disabled = !noDaCena(selectedId);
-      treeToolsEl.appendChild(rem);
-    }
+    if (emExecucao) treeToolsEl.appendChild(el("button", { type: "button", text: "⏹ Parar", title: "Para a execução e volta para a cena autorada", onclick: pararExecucao }));
+    TIPOS_NO.slice(0, 4).forEach(function (t) {
+      treeToolsEl.appendChild(el("button", { type: "button", text: "+ " + NOMES_TIPO[t], onclick: function () { adicionarNo(t); } }));
+    });
+    var rem = el("button", { type: "button", text: "− remover nó", onclick: removerNoSelecionado });
+    rem.disabled = !noDaCena(selectedId);
+    treeToolsEl.appendChild(rem);
 
     treeArqEl.innerHTML = "";
     var scr = scripts.map(function (s) {
@@ -788,9 +884,9 @@
     noteEl.innerHTML = m === "js"
       ? "Modo <b>JavaScript</b>: a lógica usa a API <code>ys.*</code> do motor direto (para quem quer controle fino)."
       : "Modo <b>YashScript</b>: interpretado pelo motor nativo do navegador, <b>sem Fengari, sem Luau e sem Roblox</b>.";
-    noteEl.innerHTML += " A <b>cena</b> é o que fica guardado: aperte <b>⏹ Parar</b> para ver os nós e editá-los no Inspetor; um <code>criar</code> no script com o mesmo nome de um nó reusa aquele nó.";
+    noteEl.innerHTML += " O estúdio <b>abre parado</b>, com a cena em <b>contorno</b>: clique num nó para selecionar, <b>arraste</b> para mover, use as <b>alças</b> para redimensionar, <b>setas</b> ajustam (segure <b>Shift</b> para saltar de 40 em 40) e <b>Delete</b> remove. <b>▶ Rodar</b> testa o jogo — dá para selecionar e arrastar <b>durante a execução</b> (o contorno fica verde; essas mudanças são só do teste, a cena autorada não muda). <b>⏹ Parar</b> volta para a edição.";
     mostrarErro(""); limparLog();
-    renderArvore(); rodar();
+    renderArvore(); preview();
   }
 
   var MENUS = [
@@ -883,18 +979,94 @@
     marcarDirty();
   });
 
-  canvas.addEventListener("mousemove", function (e) {
+  function coordsDoEvento(e) {
     var r = canvas.getBoundingClientRect();
-    var escala = Math.min(r.width / canvas.width, r.height / canvas.height) || 1;
+    // sem layout (canvas oculto ou headless) não há como escalar: trata o pixel de tela como pixel do mundo
+    if (!r.width || !r.height) return { x: e.clientX, y: e.clientY };
+    var escala = Math.min(r.width / canvas.width, r.height / canvas.height);
     var w = canvas.width * escala, h = canvas.height * escala;
     var ox = r.left + (r.width - w) / 2, oy = r.top + (r.height - h) / 2;
-    mouseX = (e.clientX - ox) / escala;
-    mouseY = (e.clientY - oy) / escala;
+    return { x: (e.clientX - ox) / escala, y: (e.clientY - oy) / escala };
+  }
+
+  function podeEditar() { return !!engine && !!projetoId; }
+
+  canvas.addEventListener("mousedown", function (e) {
+    if (e.button !== 0 || !podeEditar()) return;
+    var p = coordsDoEvento(e), no = objSelecionado();
+    var alca = no ? alcaSob(no, p.x, p.y) : null;
+    if (!alca) {
+      var atingido = noSob(p.x, p.y);
+      if (atingido) { if (atingido.id !== selectedId) selecionar(atingido.id); arrasto = { no: atingido, modo: "mover", px: p.x, py: p.y, x0: atingido.x, y0: atingido.y, w0: atingido.w, h0: atingido.h, mudou: false }; }
+      else { arrasto = null; selecionar(null); }
+      e.preventDefault();
+      return;
+    }
+    arrasto = { no: no, modo: "redim", alca: alca, px: p.x, py: p.y, x0: no.x, y0: no.y, w0: no.w, h0: no.h, mudou: false };
+    e.preventDefault();
+  });
+
+  window.addEventListener("mousemove", function (e) {
+    if (!arrasto || !podeEditar()) return;
+    var p = coordsDoEvento(e), no = arrasto.no;
+    var dx = p.x - arrasto.px, dy = p.y - arrasto.py;
+    var passo = e.shiftKey ? GRADE : 1;
+    function arred(v) { return Math.round(v / passo) * passo; }
+    if (arrasto.modo === "mover") {
+      no.x = arred(arrasto.x0 + dx / zoomAtual());
+      no.y = arred(arrasto.y0 + dy / zoomAtual());
+    } else {
+      var a = LADOS[arrasto.alca] || {}, z = zoomAtual();
+      var esq = arrasto.x0, topo = arrasto.y0, larg = arrasto.w0, alt = arrasto.h0;
+      if (a.e) larg = arrasto.w0 + dx / z;
+      if (a.o) { larg = arrasto.w0 - dx / z; esq = arrasto.x0 + dx / z; }
+      if (a.s) alt = arrasto.h0 + dy / z;
+      if (a.n) { alt = arrasto.h0 - dy / z; topo = arrasto.y0 + dy / z; }
+      larg = Math.max(passo, arred(larg)); alt = Math.max(passo, arred(alt));
+      if (a.o) esq = arrasto.x0 + arrasto.w0 - larg;
+      if (a.n) topo = arrasto.y0 + arrasto.h0 - alt;
+      no.x = arred(esq); no.y = arred(topo); no.w = larg; no.h = alt;
+    }
+    arrasto.mudou = true;
+    preview(); renderInspector(false);
+  });
+
+  window.addEventListener("mouseup", function () {
+    if (!arrasto) return;
+    var mudou = arrasto.mudou;
+    arrasto = null;
+    if (!mudou || emExecucao) return;
+    marcarDirty();
+    setStatus("cena ajustada");
+  });
+
+  canvas.addEventListener("mousemove", function (e) {
+    var p = coordsDoEvento(e);
+    mouseX = p.x; mouseY = p.y;
+    if (!podeEditar() || arrasto) return;
+    var no = objSelecionado();
+    var alca = no ? alcaSob(no, p.x, p.y) : null;
+    canvas.style.cursor = alca ? (CURSORES[alca] || "move") : (noSob(p.x, p.y) ? "move" : "default");
   });
 
   window.addEventListener("keydown", function (e) {
     if (e.key === "F5") { e.preventDefault(); rodar(); return; }
     if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) { e.preventDefault(); salvar(); return; }
+    if (!podeEditar()) return;
+    var alvo = e.target;
+    if (alvo && alvo.tagName && (alvo.tagName === "INPUT" || alvo.tagName === "TEXTAREA" || alvo.tagName === "SELECT")) return;
+    var no = objSelecionado();
+    if (!no) return;
+    if (!emExecucao && (e.key === "Delete" || e.key === "Backspace")) { e.preventDefault(); removerNoSelecionado(); return; }
+    var passo = e.shiftKey ? GRADE : 1, mexeu = false;
+    if (e.key === "ArrowLeft") { no.x -= passo; mexeu = true; }
+    else if (e.key === "ArrowRight") { no.x += passo; mexeu = true; }
+    else if (e.key === "ArrowUp") { no.y -= passo; mexeu = true; }
+    else if (e.key === "ArrowDown") { no.y += passo; mexeu = true; }
+    if (!mexeu) return;
+    e.preventDefault();
+    if (emExecucao) { renderInspector(false); return; }
+    marcarDirty(); preview(); renderInspector(false);
   });
 
   setInterval(function () { if (dirty) salvar(); }, 5 * 60 * 1000);
@@ -935,9 +1107,10 @@
     else boot();
   });
 
-  window.__yashDebug = function () {
+  window.__yashDebug = function () {    var sel = objSelecionado();
     return { modo: modo, projeto: projetoId, dirty: dirty, emExecucao: emExecucao,
       nos: cena.objetos.length, cena: cenaParaSalvar(),
+      selecionado: sel ? { id: sel.id, nome: sel.nome, x: sel.x, y: sel.y, w: sel.w, h: sel.h, daCena: !!noDaCena(sel.id) } : null,
       objs: engine ? engine.objs.filter(function (o) { return !o._dead; }).length : 0 };
   };
 })();

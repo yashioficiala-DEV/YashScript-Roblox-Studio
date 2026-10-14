@@ -111,16 +111,50 @@ grupo("incluir avisa e retorna nulo", function () {
   ok("registrou aviso de incluir", /incluir lib\.yash/.test(m.log.join("\n")), m.log.join(" | "));
 });
 
-grupo("nomes duplicados e renomear", function () {
+grupo("nomes duplicados reaproveitam o mesmo no", function () {
   var m = montar();
   var a = m.host.criar("bloco", "x");
   var b = m.host.criar("bloco", "x");
   ok("avisou duplicado", /duplicado/.test(m.log.join("\n")), m.log.join(" | "));
-  ok("ultimo nome vence no mapa", m.host.porNome.x === b);
+  igual("nenhum no extra criado", m.eng.objs.length, 1);
+  ok("os dois handles apontam para o mesmo no", a.obj === b.obj);
+  m.host.definir(b, "x", 42);
+  igual("escrever por um handle aparece no outro", a.obj.x, 42);
+});
+
+grupo("renomear atualiza o mapa de nomes", function () {
+  var m = montar();
+  var a = m.host.criar("bloco", "x");
+  m.host.criar("bloco", "y");
   m.host.definir(a, "nome", "y");
   ok("renomeou no mapa", m.host.porNome.y === a);
-  ok("nao roubou o nome do outro", m.host.porNome.x === b);
+  ok("nome antigo liberado", !m.host.porNome.x);
+  ok("avisou a colisao de nome", /duplicado/.test(m.log.join("\n")), m.log.join(" | "));
   igual("objeto atualizado", a.obj.nome, "y");
+});
+
+grupo("no autorizado na cena nao e duplicado pelo script", function () {
+  var m = montar();
+  m.eng.objs.push({ id: "n1_ab", nome: "chao", tipo: "retangulo", x: 0, y: 300, w: 900, h: 40, cor: "#3c5a46", estatico: true, deCena: true });
+  var chao = m.host.criar("bloco", "chao");
+  igual("motor continua com um no", m.eng.objs.length, 1);
+  ok("handle reusa o no da cena", chao.obj === m.eng.objs[0]);
+  igual("posicao da cena preservada", [chao.obj.x, chao.obj.y], [0, 300]);
+  m.host.definir(chao, "cor", corat(255, 80, 80));
+  igual("cor da cena editada pelo script", m.eng.objs[0].cor, "rgb(255, 80, 80)");
+  ok("avisou que adotou o no da cena", /\[cena\].*usa esse nó/.test(m.log.join("\n")), m.log.join(" | "));
+  ok("nao chamou de duplicado", !/duplicado/.test(m.log.join("\n")), m.log.join(" | "));
+});
+
+grupo("no destruido libera o nome para um novo", function () {
+  var m = montar();
+  var a = m.host.criar("bloco", "x");
+  m.host.metodo(a, "destruir", []);
+  var b = m.host.criar("bloco", "x");
+  ok("criou um no novo", a.obj !== b.obj);
+  ok("sem aviso de duplicado", !/duplicado/.test(m.log.join("\n")), m.log.join(" | "));
+  m.host.definir(b, "x", 7);
+  igual("o novo esta vivo", b.obj.x, 7);
 });
 
 grupo("escrita apos destruicao avisa e nao altera", function () {

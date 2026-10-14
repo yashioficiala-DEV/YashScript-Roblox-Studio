@@ -100,6 +100,10 @@
     .dot.asset { background:#c99bff; }
     .badge { margin-left:auto; color:var(--muted); font-size:10.5px; }
 
+    .tree-tools { display:flex; flex-wrap:wrap; gap:4px; padding:4px 6px; border-bottom:1px solid var(--line); }
+    .tree-tools button { padding:3px 7px; font-size:11px; border-radius:6px; }
+    .tree-tools button:disabled { opacity:.45; }
+
     ul.keys { margin:0; padding:0; list-style:none; font-size:12px; color:var(--muted); }
     ul.keys li { display:flex; gap:8px; padding:2px 0; }
     kbd { background:var(--panel3); border:1px solid var(--line2); border-bottom-width:2px; border-radius:6px; padding:1px 6px; font:11.5px ui-monospace,Consolas,monospace; color:var(--text); }
@@ -151,6 +155,7 @@
       <button class="pbtn play" id="rodar" type="button" title="Rodar (F5)">▶</button>
       <button class="pbtn" id="pausar" type="button" title="Pausar/Continuar">⏸</button>
       <button class="pbtn" id="restaurar" type="button" title="Restaurar">⟲</button>
+      <button class="pbtn" id="parar" type="button" title="Parar a execução e voltar para a cena">⏹</button>
       <span class="hud" id="hud">— fps</span>
     </div>
   </div>
@@ -159,7 +164,7 @@
     <section class="dock zone" data-zona="esq">
       <div class="dock-tabs" data-tabs></div>
       <div class="dock-body" data-body>
-        <div class="panel" data-panel="arvorecenas" data-titulo="Nós" data-dot="dir"><ul class="tree" id="tree"></ul></div>
+        <div class="panel" data-panel="arvorecenas" data-titulo="Nós" data-dot="dir"><div class="tree-tools" id="treeTools"></div><ul class="tree" id="tree"></ul></div>
         <div class="panel" data-panel="arquivos" data-titulo="Arquivos" data-dot="asset"><ul class="tree" id="treeArq"></ul></div>
       </div>
     </section>
@@ -218,6 +223,7 @@
   var logEl = document.getElementById("log");
   var codeEl = document.getElementById("codigo");
   var treeEl = document.getElementById("tree");
+  var treeToolsEl = document.getElementById("treeTools");
   var treeArqEl = document.getElementById("treeArq");
   var inspectorEl = document.getElementById("inspector");
   var noteEl = document.getElementById("note");
@@ -230,6 +236,7 @@
   var modoLabelEl = document.getElementById("modoLabel");
 
   var engine = null, modo = "yashnativo";
+  var emExecucao = false;
   var raf = 0, lastT = 0, acc = 0, frames = 0;
   var mouseX = 0, mouseY = 0;
   var selectedId = null, inspFields = null, inspRenderId = "__none__";
@@ -267,6 +274,108 @@
 
   var scripts = [{ nome: "jogo.yash", ativo: true, conteudo: "" }];
 
+  var MUNDO_PADRAO = { largura: 900, altura: 520, fundo: "#0b0f1a", gravidade: 1400 };
+  var CAMPOS_NO = ["nome", "tipo", "x", "y", "w", "h", "cor", "rot", "z", "vx", "vy", "alpha", "estatico", "gravidade", "restituicao", "friccao", "espaco", "texto", "visivel", "semColisao", "imagem", "tag"];
+  var cena = cenaNova();
+
+  function cenaNova() {
+    return { largura: MUNDO_PADRAO.largura, altura: MUNDO_PADRAO.altura, fundo: MUNDO_PADRAO.fundo, gravidade: MUNDO_PADRAO.gravidade, camera: null, objetos: [] };
+  }
+  function noNormal(n, i) {
+    var o = {
+      id: (n && n.id) || ("n" + (i + 1) + "_" + Math.random().toString(36).slice(2, 6)),
+      nome: (n && n.nome) || ("no" + (i + 1)),
+      tipo: (n && n.tipo) || "retangulo",
+      x: 0, y: 0, w: 32, h: 32, cor: "#7aa2ff", rot: 0, z: 0, vx: 0, vy: 0, alpha: 1,
+      estatico: false, gravidade: false, espaco: "mundo", visivel: true
+    };
+    if (n) CAMPOS_NO.forEach(function (k) { if (n[k] !== undefined && n[k] !== null) o[k] = n[k]; });
+    o.deCena = true;
+    return o;
+  }
+  function cenaDe(doc) {
+    var c = cenaNova();
+    if (!doc || typeof doc !== "object") return c;
+    ["largura", "altura", "fundo", "gravidade"].forEach(function (k) { if (doc[k] != null) c[k] = doc[k]; });
+    if (doc.camera) c.camera = doc.camera;
+    c.objetos = (Array.isArray(doc.objetos) ? doc.objetos : []).map(noNormal);
+    return c;
+  }
+  function cenaParaSalvar() {
+    return {
+      largura: cena.largura, altura: cena.altura, fundo: cena.fundo, gravidade: cena.gravidade,
+      camera: cena.camera,
+      objetos: cena.objetos.map(function (o) {
+        var n = { id: o.id };
+        CAMPOS_NO.forEach(function (k) { if (o[k] !== undefined) n[k] = o[k]; });
+        return n;
+      })
+    };
+  }
+
+  function nomeLivre(base) {
+    var existe = function (n) { return cena.objetos.some(function (o) { return o.nome === n; }); };
+    if (!existe(base)) return base;
+    var i = 2; while (existe(base + i)) i++;
+    return base + i;
+  }
+  var NO_PADRAO = {
+    retangulo: { base: "bloco", w: 120, h: 40, cor: "#3c5a46" },
+    circulo: { base: "bola", w: 36, h: 36, cor: "#ff785a" },
+    triangulo: { base: "seta", w: 40, h: 40, cor: "#7aa2ff" },
+    texto: { base: "aviso", w: 160, h: 24, cor: "#e8ecf8", texto: "Texto" }
+  };
+  function exigirCena() { if (emExecucao) pararExecucao(); }
+  function adicionarNo(tipo) {
+    exigirCena();
+    var d = NO_PADRAO[tipo] || NO_PADRAO.retangulo;
+    var n = noNormal({
+      nome: nomeLivre(d.base), tipo: tipo,
+      x: Math.round(cena.largura / 2 - d.w / 2), y: Math.round(cena.altura / 2 - d.h / 2),
+      w: d.w, h: d.h, cor: d.cor, texto: d.texto, gravidade: tipo === "circulo", restituicao: tipo === "circulo" ? 0.6 : 0
+    }, cena.objetos.length);
+    cena.objetos.push(n);
+    selectedId = n.id;
+    marcarDirty();
+    renderArvore(); renderInspector(true); preview();
+    return n;
+  }
+  function noDaCena(id) {
+    return cena.objetos.filter(function (o) { return o.id === id; })[0] || null;
+  }
+  function removerNoSelecionado() {
+    exigirCena();
+    var n = noDaCena(selectedId);
+    if (!n) return null;
+    cena.objetos = cena.objetos.filter(function (o) { return o !== n; });
+    if (selectedId === n.id) selectedId = null;
+    marcarDirty();
+    renderArvore(); renderInspector(true); preview();
+    return n;
+  }
+  function duplicarNoSelecionado() {
+    exigirCena();
+    var n = noDaCena(selectedId);
+    if (!n) return null;
+    var copia = noNormal(n, cena.objetos.length);
+    copia.id = "n" + (cena.objetos.length + 1) + "_" + Math.random().toString(36).slice(2, 6);
+    copia.nome = nomeLivre(n.nome + "2");
+    copia.x = (n.x || 0) + 20;
+    copia.y = (n.y || 0) + 20;
+    cena.objetos.push(copia);
+    selectedId = copia.id;
+    marcarDirty();
+    renderArvore(); renderInspector(true); preview();
+    return copia;
+  }
+  function preview() {
+    if (emExecucao) return;
+    if (!engine) engine = new YashWeb.Engine(canvas);
+    engine.carregar(cenaParaSalvar());
+    engine.camera.alvo = null;
+    engine.update(0);
+  }
+
   function mostrarErro(msg) {
     if (!msg) { errEl.style.display = "none"; errEl.textContent = ""; return; }
     errEl.style.display = "block"; errEl.textContent = msg;
@@ -282,7 +391,7 @@
   function salvar() {
     if (!projetoId || salvando) return;
     salvando = true; setStatus("salvando…");
-    YashAuth.salvarProjeto(projetoId, { codigo: codeEl.value, nome: projetoNome }).then(function () {
+    YashAuth.salvarProjeto(projetoId, { codigo: codeEl.value, nome: projetoNome, cena: cenaParaSalvar() }).then(function () {
       salvando = false; dirty = false; setStatus("salvo às " + hora(), "ok");
     }, function (e) { salvando = false; setStatus("falha ao salvar", "erro"); mostrarErro("Não foi possível salvar: " + (e && e.message || e)); });
   }
@@ -290,7 +399,17 @@
   function parar() {
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
+    emExecucao = false;
     if (engine && modo === "js") engine.parar();
+  }
+
+  function pararExecucao() {
+    parar();
+    natRt = null; natHost = null; natColisoes = {}; natHover = null; natBtn = false;
+    engine = null;
+    if (selectedId != null && !noDaCena(selectedId)) selectedId = null;
+    hudEl.textContent = "— fps";
+    renderArvore(); renderInspector(true); preview();
   }
 
   function loop(t) {
@@ -309,10 +428,10 @@
     raf = requestAnimationFrame(loop);
   }
 
-  function novoMotor(scene) {
+  function novoMotor() {
     if (engine) { if (engine.running) engine.parar(); }
     engine = new YashWeb.Engine(canvas);
-    engine.carregar(scene || { largura: 900, altura: 520, fundo: "#0b0f1a", gravidade: 0 });
+    engine.carregar(cenaParaSalvar());
     engine.input.atach();
     lastT = 0; acc = 0; frames = 0;
     return engine;
@@ -321,12 +440,14 @@
   function rodarJS() {
     mostrarErro(""); limparLog();
     parar();
-    novoMotor(null);
+    novoMotor();
     var hooks;
     try { hooks = new Function("ys", "engine", "objs", codeEl.value); engine.script(hooks); }
     catch (e) { mostrarErro("Erro no script:\n" + (e && e.message ? e.message : String(e))); return; }
     engine.onTick = function (fps) { hudEl.textContent = fps + " fps"; };
     engine.iniciar();
+    emExecucao = true;
+    renderArvore();
   }
 
   var natRt = null, natHost = null, natHover = null, natBtn = false, natColisoes = {};
@@ -399,13 +520,15 @@
     var prog;
     try { prog = YashLang.analisar(codeEl.value); }
     catch (e) { mostrarErro(formatarErro(e)); return; }
-    novoMotor({ largura: 900, altura: 520, fundo: "#0b0f1a", gravidade: 0 });
+    novoMotor();
     natColisoes = {}; natHover = null; natBtn = false;
     natHost = new YashEngineHost(engine, { aabb: YashWeb.aabb, registrar: function (s) { logar(s); } });
     try { natRt = YashLang.vm.executar(prog, natHost); }
     catch (e) { natRt = null; natHost = null; mostrarErro(formatarErro(e)); return; }
     try { natRt.emitir("iniciar"); }
-    catch (e) { mostrarErro(formatarErro(e)); parar(); return; }
+    catch (e) { natRt = null; natHost = null; mostrarErro(formatarErro(e)); return; }
+    emExecucao = true;
+    renderArvore();
     if (!raf) raf = requestAnimationFrame(loop);
   }
 
@@ -448,19 +571,57 @@
     return li;
   }
 
+  var NOMES_TIPO = { retangulo: "bloco", circulo: "esfera", triangulo: "triângulo", poligono: "polígono", linha: "linha", texto: "texto", sprite: "sprite", logico: "lógico" };
+  var TIPOS_NO = ["retangulo", "circulo", "triangulo", "poligono", "linha", "texto", "sprite", "logico"];
+  var CAMPOS_INSP = [
+    { k: "nome", label: "Nome", t: "text" },
+    { k: "tipo", label: "Tipo", t: "sel", opcoes: TIPOS_NO },
+    { k: "x", label: "Posição X", t: "num" },
+    { k: "y", label: "Posição Y", t: "num" },
+    { k: "w", label: "Largura", t: "num" },
+    { k: "h", label: "Altura", t: "num" },
+    { k: "rot", label: "Rotação", t: "num" },
+    { k: "z", label: "Ordem (Z)", t: "num" },
+    { k: "alpha", label: "Opacidade", t: "num", min: 0, max: 1, passo: "0.05" },
+    { k: "vx", label: "Velocidade X", t: "num" },
+    { k: "vy", label: "Velocidade Y", t: "num" },
+    { k: "restituicao", label: "Quicar", t: "num", min: 0, max: 1, passo: "0.05" },
+    { k: "friccao", label: "Atrito", t: "num" },
+    { k: "cor", label: "Cor", t: "cor" },
+    { k: "texto", label: "Texto", t: "text" },
+    { k: "tag", label: "Tag", t: "text" },
+    { k: "espaco", label: "Espaço", t: "sel", opcoes: ["mundo", "tela"] },
+    { k: "estatico", label: "Estático", t: "bool" },
+    { k: "gravidade", label: "Gravidade", t: "bool" },
+    { k: "semColisao", label: "Sem colisão", t: "bool" },
+    { k: "visivel", label: "Visível", t: "bool" }
+  ];
+
+  function listaAtiva() {
+    if (emExecucao && engine) return engine.objs.filter(function (o) { return !o._dead; });
+    return cena.objetos;
+  }
   function renderArvore() {
     treeEl.innerHTML = "";
-    var objs = [];
-    (engine ? engine.objs : []).forEach(function (o) {
-      if (o._dead) return;
+    var nos = listaAtiva().map(function (o) {
       var rot = o.nome || (o.tag ? "#" + o.tag : String(o.id || "objeto"));
-      var node = item(rot, "obj", o.tipo, (function (obj) {
-        return function () { selectedId = obj.id; renderInspector(true); };
-      })(o));
-      if (o.id === selectedId) node.firstChild.className += " sel";
-      objs.push(node);
+      var li = item(rot, "obj", NOMES_TIPO[o.tipo] || o.tipo, function () { selecionar(o.id); });
+      if (o.id === selectedId) li.firstChild.className += " sel";
+      return li;
     });
-    treeEl.appendChild(ramo("Workspace", objs));
+    treeEl.appendChild(ramo(emExecucao ? "Cena (em execução)" : "Cena", nos));
+
+    treeToolsEl.innerHTML = "";
+    if (emExecucao) {
+      treeToolsEl.appendChild(el("button", { type: "button", text: "⏹ Parar para editar", onclick: pararExecucao }));
+    } else {
+      TIPOS_NO.slice(0, 4).forEach(function (t) {
+        treeToolsEl.appendChild(el("button", { type: "button", text: "+ " + NOMES_TIPO[t], onclick: function () { adicionarNo(t); } }));
+      });
+      var rem = el("button", { type: "button", text: "− remover nó", onclick: removerNoSelecionado });
+      rem.disabled = !noDaCena(selectedId);
+      treeToolsEl.appendChild(rem);
+    }
 
     treeArqEl.innerHTML = "";
     var scr = scripts.map(function (s) {
@@ -473,44 +634,86 @@
     treeArqEl.appendChild(ramo("Scripts", scr));
   }
 
+  function selecionar(id) {
+    selectedId = id;
+    renderArvore(); renderInspector(true);
+  }
+  function focarCampoInspetor(campo) {
+    renderInspector(true);
+    var c = inspFields && inspFields.campos[campo];
+    if (c && c.inp.focus) c.inp.focus();
+  }
   function objSelecionado() {
-    if (selectedId == null || !engine) return null;
-    return engine.objs.filter(function (o) { return o.id === selectedId && !o._dead; })[0] || null;
+    if (selectedId == null) return null;
+    return listaAtiva().filter(function (o) { return o.id === selectedId; })[0] || null;
+  }
+  function duasCasas(v) {
+    var n = Math.max(0, Math.min(255, Math.round(Number(v) || 0))).toString(16);
+    return n.length < 2 ? "0" + n : n;
+  }
+  function hexDaCor(v) {
+    if (typeof v !== "string") return "#7aa2ff";
+    if (v.charAt(0) === "#") return v.length === 7 ? v : "#7aa2ff";
+    var p = v.replace(/^rgba?\(|\)$/g, "").split(/[\s,]+/).filter(function (s) { return s !== ""; });
+    if (p.length >= 3) return "#" + duasCasas(p[0]) + duasCasas(p[1]) + duasCasas(p[2]);
+    return "#7aa2ff";
+  }
+  function valorCampo(o, f) {
+    var v = o[f.k];
+    if (f.t === "num") return v == null ? 0 : Math.round(Number(v) * 1000) / 1000;
+    if (f.t === "bool") return !!v;
+    if (f.t === "cor") return hexDaCor(v);
+    if (f.t === "sel") return v == null ? f.opcoes[0] : String(v);
+    return v == null ? "" : String(v);
+  }
+  function aoEditarNo() {
+    if (emExecucao) return;
+    marcarDirty();
+    renderArvore(); preview();
   }
   function renderInspector(force) {
     var o = objSelecionado();
     if (!o) {
-      if (inspRenderId !== "__none__") { inspRenderId = "__none__"; inspFields = null; inspectorEl.innerHTML = ""; inspectorEl.appendChild(el("div", { class: "insp-vazio", text: "Nenhum nó selecionado. Clique num objeto da cena." })); }
+      if (inspRenderId !== "__none__") { inspRenderId = "__none__"; inspFields = null; inspectorEl.innerHTML = ""; inspectorEl.appendChild(el("div", { class: "insp-vazio", text: emExecucao ? "Dê ⏹ Parar para editar a cena." : "Nenhum nó selecionado. Use “+ nó” na aba Nós, ou clique num item da cena." })); }
       return;
     }
     if (!force && inspRenderId === String(o.id) && inspFields) { atualizarInspector(o); return; }
     inspRenderId = String(o.id);
     inspectorEl.innerHTML = "";
-    inspectorEl.appendChild(el("div", { class: "insp-head" }, [el("span", { class: "dot obj" }), el("span", { text: o.nome || ("Objeto " + o.id) })]));
-    function linha(rot, campo) { inspectorEl.appendChild(el("div", { class: "insp-row" }, [el("span", { class: "insp-label", text: rot }), campo])); return campo; }
-    var inNome = el("input", { type: "text", value: o.nome || "" }); inNome.oninput = function () { o.nome = inNome.value; };
-    linha("Nome", inNome);
-    linha("Tipo", el("span", { class: "insp-ro", text: o.tipo }));
-    var inX = el("input", { type: "number", value: Math.round(o.x) }); inX.oninput = function () { o.x = Number(inX.value) || 0; };
-    var inY = el("input", { type: "number", value: Math.round(o.y) }); inY.oninput = function () { o.y = Number(inY.value) || 0; };
-    var inW = el("input", { type: "number", value: Math.round(o.w) }); inW.oninput = function () { o.w = Number(inW.value) || 0; };
-    var inH = el("input", { type: "number", value: Math.round(o.h) }); inH.oninput = function () { o.h = Number(inH.value) || 0; };
-    linha("Posição X", inX); linha("Posição Y", inY);
-    linha("Largura", inW); linha("Altura", inH);
-    var inEst = el("input", { type: "checkbox" }); inEst.checked = !!o.estatico; inEst.onchange = function () { o.estatico = inEst.checked; };
-    linha("Estático", inEst);
-    var sw = el("span", { class: "insp-swatch" }); sw.style.background = o.cor || "#888";
-    linha("Cor", sw);
-    inspFields = { o: o, nome: inNome, x: inX, y: inY, w: inW, h: inH, est: inEst, cor: sw };
+    inspectorEl.appendChild(el("div", { class: "insp-head" }, [el("span", { class: "dot obj" }), el("span", { text: o.nome || ("Nó " + o.id) })]));
+    var campos = {};
+    CAMPOS_INSP.forEach(function (f) {
+      var inp;
+      if (f.t === "bool") {
+        inp = el("input", { type: "checkbox" });
+        inp.checked = valorCampo(o, f);
+        inp.onchange = function () { o[f.k] = inp.checked; aoEditarNo(); };
+      } else if (f.t === "sel") {
+        inp = el("select");
+        f.opcoes.forEach(function (op) { inp.appendChild(el("option", { value: op, text: NOMES_TIPO[op] || op })); });
+        inp.value = valorCampo(o, f);
+        inp.onchange = function () { o[f.k] = inp.value; aoEditarNo(); renderInspector(true); };
+      } else {
+        inp = el("input", { type: f.t === "num" ? "number" : (f.t === "cor" ? "color" : "text") });
+        inp.value = valorCampo(o, f);
+        if (f.passo) inp.step = f.passo;
+        if (f.min != null) inp.min = f.min;
+        if (f.max != null) inp.max = f.max;
+        inp.oninput = function () { o[f.k] = f.t === "num" ? (Number(inp.value) || 0) : inp.value; aoEditarNo(); };
+      }
+      campos[f.k] = { f: f, inp: inp };
+      inspectorEl.appendChild(el("div", { class: "insp-row" }, [el("span", { class: "insp-label", text: f.label }), inp]));
+    });
+    inspFields = { o: o, campos: campos };
   }
   function atualizarInspector(o) {
     if (!inspFields || inspFields.o !== o) return;
-    function set(inp, v) { if (document.activeElement !== inp) inp.value = v; }
-    set(inspFields.x, Math.round(o.x)); set(inspFields.y, Math.round(o.y));
-    set(inspFields.w, Math.round(o.w)); set(inspFields.h, Math.round(o.h));
-    set(inspFields.nome, o.nome || "");
-    inspFields.cor.style.background = o.cor || "#888";
-    if (document.activeElement !== inspFields.est) inspFields.est.checked = !!o.estatico;
+    Object.keys(inspFields.campos).forEach(function (k) {
+      var c = inspFields.campos[k];
+      if (document.activeElement === c.inp) return;
+      var v = valorCampo(o, c.f);
+      if (c.f.t === "bool") c.inp.checked = v; else c.inp.value = v;
+    });
   }
 
   function marcarDirty() { dirty = true; setStatus("alterações não salvas"); }
@@ -585,6 +788,7 @@
     noteEl.innerHTML = m === "js"
       ? "Modo <b>JavaScript</b>: a lógica usa a API <code>ys.*</code> do motor direto (para quem quer controle fino)."
       : "Modo <b>YashScript</b>: interpretado pelo motor nativo do navegador, <b>sem Fengari, sem Luau e sem Roblox</b>.";
+    noteEl.innerHTML += " A <b>cena</b> é o que fica guardado: aperte <b>⏹ Parar</b> para ver os nós e editá-los no Inspetor; um <code>criar</code> no script com o mesmo nome de um nó reusa aquele nó.";
     mostrarErro(""); limparLog();
     renderArvore(); rodar();
   }
@@ -598,8 +802,15 @@
       { rot: "Sair da conta", fn: function () { YashAuth.sair(); } }
     ] },
     { rot: "Cena", itens: [
+      { rot: "Adicionar bloco", fn: function () { adicionarNo("retangulo"); } },
+      { rot: "Adicionar esfera", fn: function () { adicionarNo("circulo"); } },
+      { rot: "Adicionar triângulo", fn: function () { adicionarNo("triangulo"); } },
+      { rot: "Adicionar texto", fn: function () { adicionarNo("texto"); } },
+      { rot: "Remover nó selecionado", fn: function () { removerNoSelecionado(); } },
+      { sep: true },
       { rot: "Rodar", fn: function () { rodar(); } },
       { rot: "Pausar / Continuar", fn: function () { pausarAcao(); } },
+      { rot: "Parar", fn: function () { pararExecucao(); } },
       { rot: "Restaurar", fn: function () { restaurarAcao(); } }
     ] },
     { rot: "Exibir", itens: [
@@ -607,6 +818,11 @@
       { rot: "Aba: jogo.yash", fn: function () { abrirPainel("script"); } },
       { rot: "Aba: Saída", fn: function () { abrirPainel("saida"); } },
       { rot: "Aba: Inspetor", fn: function () { abrirPainel("inspetor"); } }
+    ] },
+    { rot: "Nó", itens: [
+      { rot: "Renomear", fn: function () { abrirPainel("inspetor"); focarCampoInspetor("nome"); } },
+      { rot: "Duplicar", fn: function () { duplicarNoSelecionado(); } },
+      { rot: "Remover", fn: function () { removerNoSelecionado(); } }
     ] },
     { rot: "Modo", itens: [
       { rot: "YashScript", fn: function () { definirModo("yashnativo"); } },
@@ -643,6 +859,7 @@
     var c = el("div", { class: "about-card" }, [
       el("h3", { text: "YashStudio 2D" }),
       el("p", { text: "Mini studio no navegador. A disposição dos painéis segue o estilo do Godot: as abas podem ser arrastadas entre os painéis e você escolhe onde cada uma fica. O visual segue o tema do site YashScript. O YashScript é executado pelo interpretador nativo do navegador — sem Fengari, sem Luau e sem Roblox; a geração de Luau continua existindo só no porte do plugin Roblox." }),
+      el("p", { text: "A cena é guardada junto com o código na sua conta: dê ⏹ Parar para ver e editar os nós (posição, tamanho, cor, gravidade…), use “+ nó” para criar novos e escreva o script em YashScript. Um criar do script com o mesmo nome de um nó da cena reusa aquele nó — a execução nunca muda a cena autorada." }),
       el("button", { class: "tbtn", type: "button", text: "Fechar", onclick: function () { o.remove(); } })
     ]);
     o.appendChild(c);
@@ -654,6 +871,7 @@
   document.getElementById("salvar").addEventListener("click", salvar);
   document.getElementById("pausar").addEventListener("click", pausarAcao);
   document.getElementById("restaurar").addEventListener("click", restaurarAcao);
+  document.getElementById("parar").addEventListener("click", pararExecucao);
 
   codeEl.addEventListener("input", function () {
     scripts[0].conteudo = codeEl.value;
@@ -701,6 +919,7 @@
       pnomeEl.value = projetoNome;
       codeEl.value = (p.codigo && p.codigo.trim()) ? p.codigo : CONTEUDO_PADRAO;
       scripts[0].conteudo = codeEl.value;
+      cena = cenaDe(p.cena);
       centro.hidden = true; principal.hidden = false;
       setStatus("salvo", "ok");
       definirModo("yashnativo");
@@ -717,7 +936,9 @@
   });
 
   window.__yashDebug = function () {
-    return { modo: modo, projeto: projetoId, dirty: dirty, objs: engine ? engine.objs.filter(function (o) { return !o._dead; }).length : 0 };
+    return { modo: modo, projeto: projetoId, dirty: dirty, emExecucao: emExecucao,
+      nos: cena.objetos.length, cena: cenaParaSalvar(),
+      objs: engine ? engine.objs.filter(function (o) { return !o._dead; }).length : 0 };
   };
 })();
 </script>

@@ -29,6 +29,14 @@ function rodarNoMotor(fonte) {
   var r = YashLang.rodar(fonte, host);
   return { engine: engine, host: host, r: r, log: log };
 }
+function rodarComCena(fonte, objetos) {
+  var engine = new YashWeb.Engine(fakeCanvas());
+  engine.carregar({ largura: 400, altura: 300, fundo: "#0b0f1a", gravidade: 0, objetos: objetos });
+  var log = [];
+  var host = new Host(engine, { aabb: YashWeb.aabb, registrar: function () { log.push(Array.prototype.slice.call(arguments).join(" ")); } });
+  var r = YashLang.rodar(fonte, host);
+  return { engine: engine, host: host, r: r, log: log };
+}
 function achar(engine, nome) { return engine.objs.filter(function (o) { return o.nome === nome && !o._dead; })[0]; }
 
 grupo("host real cria entidades visiveis no motor", function () {
@@ -39,6 +47,17 @@ grupo("host real cria entidades visiveis no motor", function () {
   igual("bola tipo", bola.tipo, "circulo");
   igual("bola posicao", [bola.x, bola.y], [200, 100]);
   igual("bola cor", bola.cor, "rgb(255, 80, 80)");
+});
+
+grupo("no autorizado na cena e no do script sao o mesmo corpo", function () {
+  var m = rodarComCena("criar bloco 'chao'\n    cor = rgb(60, 90, 70)\nfim\nquando iniciar\n    mover chao para (50, 40)\nfim", [
+    { id: "n1", nome: "chao", tipo: "retangulo", x: 0, y: 250, w: 400, h: 30 }
+  ]);
+  igual("motor tem um so no", m.engine.objs.length, 1);
+  igual("script editou o no da cena", m.engine.objs[0].cor, "rgb(60, 90, 70)");
+  m.r.emitir("iniciar");
+  igual("comando resolveu o no da cena pelo nome", [m.engine.objs[0].x, m.engine.objs[0].y], [50, 40]);
+  ok("avisou que adotou o no da cena", /\[cena\].*usa esse nó/.test(m.log.join("\n")), m.log.join(" | "));
 });
 
 grupo("engine.update executa (integra + resolve + render) sem lançar", function () {

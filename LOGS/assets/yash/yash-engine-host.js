@@ -62,22 +62,60 @@
     return h.obj;
   };
 
+  function aplicarForma(o, forma, tipo) {
+    o.forma = forma; o.tipo = tipo;
+    if (forma === "hud") { o.espaco = "tela"; o.tipo = "texto"; o.w = 160; o.h = 24; }
+    if (SEM_RENDER[tipo]) { o.visivel = false; o.estatico = true; o.semColisao = true; o.w = 0; o.h = 0; }
+  }
+  function handleDe(o, forma, tipo) {
+    return { __y: "handle", id: o.id, forma: forma, tipo: tipo, nome: o.nome, props: {}, obj: o };
+  }
+
   Host.prototype.imprimir = function () {
     this.registrar(Array.prototype.slice.call(arguments).map(texto).join(" "));
   };
 
+  // Nome é a única ponte entre o script e os nós autorizados na cena: sem reaproveitar,
+  // cada execução criaria um segundo "chao" ao lado do nó editado no estúdio.
+  Host.prototype._noDaCena = function (nome) {
+    var objs = this.engine.objs || [];
+    for (var i = 0; i < objs.length; i++) {
+      var o = objs[i];
+      if (!o || o._dead || o.nome !== nome) continue;
+      var h = handleDe(o, o.forma || o.tipo || "bloco", FORMAS[o.tipo] || o.tipo || "retangulo");
+      this.porNome[nome] = h; this.porObj.push(h);
+      return h;
+    }
+    return null;
+  };
+
   Host.prototype.criar = function (forma, nome) {
     var tipo = FORMAS[forma] || "retangulo";
+    var proprio = nome == null || nome === "" ? null : this.porNome[nome];
+    if (proprio) {
+      if (this._entidade(proprio)) {
+        this._aviso("nome de entidade duplicado: '" + nome + "' (a criação reaproveita o nó do próprio script em vez de criar outro)");
+        aplicarForma(proprio.obj, forma, tipo);
+        proprio.forma = forma; proprio.tipo = proprio.obj.tipo;
+        return proprio;
+      }
+      delete this.porNome[nome];
+    }
+    var adotado = nome == null || nome === "" ? null : this._noDaCena(nome);
+    if (adotado) {
+      this.registrar("[cena] '" + nome + "' já existia na cena; o script usa esse nó em vez de criar outro");
+      aplicarForma(adotado.obj, forma, tipo);
+      adotado.forma = forma; adotado.tipo = adotado.obj.tipo;
+      return adotado;
+    }
     var id = ++this._id;
     var o = {
       id: id, tipo: tipo, nome: nome, forma: forma,
       x: 0, y: 0, w: 32, h: 32, cor: "#7aa2ff",
       vx: 0, vy: 0, rot: 0, z: 0, estatico: false, espaco: "mundo"
     };
-    if (forma === "hud") { o.espaco = "tela"; o.tipo = "texto"; o.w = 160; o.h = 24; }
-    if (SEM_RENDER[tipo]) { o.visivel = false; o.estatico = true; o.semColisao = true; o.w = 0; o.h = 0; }
-    var handle = { __y: "handle", id: id, forma: forma, tipo: tipo, nome: nome, props: {}, obj: o };
-    if (this.porNome[nome]) this._aviso("nome de entidade duplicado: '" + nome + "' (o anterior deixa de ser acessível por nome)");
+    aplicarForma(o, forma, tipo);
+    var handle = handleDe(o, forma, o.tipo);
     this.porNome[nome] = handle;
     this.porObj.push(handle);
     this.engine.objs.push(o);

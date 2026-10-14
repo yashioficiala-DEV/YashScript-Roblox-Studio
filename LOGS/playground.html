@@ -24,10 +24,17 @@
     .spacer { flex:1; }
     .loading { text-align:center; color:var(--muted); padding:60px 0; }
     .ys-btn-primary { background:var(--accent2); border-color:var(--accent2); color:#04121f; font-weight:700; }
+    .ys-pcard { position:relative; }
     .ys-pcard-ico { color:var(--accent2); background:rgba(122,162,255,.14); }
     .ys-pcard:hover { border-color:var(--accent2); }
     .modal-field { display:block; padding:0; }
     .modal-field > span { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+    .ys-dims { display:flex; gap:8px; }
+    .ys-dim { flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:9px 11px; border-radius:9px; background:var(--panel2); border:1px solid var(--border, #263049); color:var(--text); cursor:pointer; text-align:left; }
+    .ys-dim b { font-size:14px; }
+    .ys-dim span { font-size:11.5px; color:var(--muted); }
+    .ys-dim.on { border-color:var(--accent2); background:rgba(122,162,255,.14); }
+    .ys-pcard-dim { position:absolute; top:8px; right:8px; font-size:10.5px; font-weight:700; color:#04121f; background:var(--accent2); border-radius:999px; padding:1px 7px; }
   </style>
 </head>
 <body>
@@ -90,6 +97,19 @@
       function abrirCriar() {
         if (document.querySelector(".ys-criar-modal")) return;
         var inp = el("input", { class: "ys-input", type: "text", maxlength: "60", placeholder: "Nome do projeto" });
+        var dim = "2d";
+        var opts = { "2d": null, "3d": null };
+        function botaoDim(valor, titulo, sub) {
+          var b = el("button", { class: "ys-dim", type: "button", "data-dim": valor }, [
+            el("b", { text: titulo }), el("span", { text: sub })
+          ]);
+          b.onclick = function () { dim = valor; pintar(); };
+          opts[valor] = b;
+          return b;
+        }
+        function pintar() {
+          Object.keys(opts).forEach(function (k) { if (opts[k]) opts[k].className = "ys-dim" + (k === dim ? " on" : ""); });
+        }
         var err = el("div", { class: "ys-form-err" });
         var criar = el("button", { class: "ys-btn ys-btn-primary", type: "button", text: "Criar" });
         var cancelar = el("button", { class: "ys-btn", type: "button", text: "Cancelar" });
@@ -102,15 +122,20 @@
           var nome = (inp.value || "").trim();
           if (!nome) { err.textContent = "Dê um nome ao projeto."; return; }
           criar.disabled = true; err.textContent = "";
-          YashAuth.criarProjeto(nome).then(function (p) { fechar(); location.href = "projeto.html?id=" + encodeURIComponent(p.id); }, function (e) { err.textContent = e.message; criar.disabled = false; });
+          YashAuth.criarProjeto(nome, dim).then(function (p) { fechar(); location.href = "projeto.html?id=" + encodeURIComponent(p.id); }, function (e) { err.textContent = e.message; criar.disabled = false; });
         };
         bg.appendChild(el("div", { class: "ys-modal" }, [
           el("h2", { style: "margin:0 0 14px;font-size:18px", text: "Novo projeto" }),
           el("label", { class: "modal-field" }, [el("span", { text: "Nome" }), inp]),
+          el("div", { class: "modal-field" }, [
+            el("span", { text: "Dimensão (define os nós disponíveis no estúdio)" }),
+            el("div", { class: "ys-dims" }, [botaoDim("2d", "2D", "desenho no plano"), botaoDim("3d", "3D", "profundidade e altura")])
+          ]),
           err,
           el("div", { class: "ys-modal-actions" }, [cancelar, criar])
         ]));
         document.body.appendChild(bg);
+        pintar();
         inp.focus();
       }
 
@@ -124,7 +149,8 @@
         vazio.hidden = lista.length > 0;
         lista.forEach(function (p) {
           var card = el("div", { class: "ys-pcard", onclick: function () { location.href = "projeto.html?id=" + encodeURIComponent(p.id); } });
-          card.appendChild(el("div", { class: "ys-pcard-ico", text: "{}" }));
+          card.appendChild(el("span", { class: "ys-pcard-dim", text: (p.dim === "3d" ? "3D" : "2D") }));
+          card.appendChild(el("div", { class: "ys-pcard-ico", text: p.dim === "3d" ? "◇" : "{}" }));
           card.appendChild(el("div", { class: "ys-pcard-name", text: p.nome || "Projeto sem nome" }));
           card.appendChild(el("div", { class: "ys-pcard-meta", text: "editado em " + fmt(p.atualizadoEm) }));
           card.appendChild(el("div", { class: "ys-pcard-actions" }, [

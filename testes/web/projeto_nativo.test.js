@@ -29,6 +29,7 @@ var dom = new JSDOM(htmlSemScripts, {
       ["setTransform", "fillRect", "clearRect", "strokeRect", "save", "restore", "translate", "scale", "rotate",
         "beginPath", "arc", "fill", "moveTo", "lineTo", "closePath", "stroke", "fillText", "drawImage", "rect",
         "ellipse", "clip", "quadraticCurveTo", "bezierCurveTo"].forEach(function (k) { c[k] = function () {}; });
+      c.createRadialGradient = c.createLinearGradient = function () { return { addColorStop: function () {} }; };
       c.canvas = self;
       return c;
     };
@@ -105,10 +106,26 @@ setTimeout(function () {
   ok("parar volta para a cena", dbg && dbg.emExecucao === false && dbg.nos === 0, JSON.stringify(dbg));
   ok("cena vazia na arvore", doc.getElementById("tree").textContent.indexOf("Cena") >= 0, doc.getElementById("tree").textContent);
   var ferramentas = Array.prototype.slice.call(doc.querySelectorAll("#treeTools button"));
-  ok("ferramentas de node aparecem ao parar", ferramentas.length === 5, ferramentas.length);
+  ok("sem botoes de criar no topo da arvore (vao para o botao direito)", ferramentas.length === 0, ferramentas.length);
 
-  var esfera = ferramentas.filter(function (b) { return /esfera/.test(b.textContent); })[0];
-  esfera.click();
+  function abrirCenaMenuEAcionar(rot) {
+    var menus = Array.prototype.slice.call(doc.querySelectorAll(".menu > button"));
+    var cenaBtn = menus.filter(function (b) { return b.textContent.trim() === "Cena"; })[0];
+    if (cenaBtn) cenaBtn.click();
+    var pop = Array.prototype.slice.call(doc.querySelectorAll(".menu-pop button"));
+    var item = pop.filter(function (b) { return b.textContent.trim() === rot; })[0];
+    if (item) item.click();
+  }
+  function adicionarNoViaDialogo(nomeTipo) {
+    abrirCenaMenuEAcionar("Adicionar nó…");
+    var tipo = Array.prototype.slice.call(doc.querySelectorAll(".dlg-lista button"))
+      .filter(function (b) { var s = b.querySelector("span"); return s && s.textContent.trim() === nomeTipo; })[0];
+    if (tipo) tipo.click();
+    var adicionar = Array.prototype.slice.call(doc.querySelectorAll(".dlg-actions button"))
+      .filter(function (b) { return b.textContent.trim() === "Adicionar"; })[0];
+    if (adicionar) adicionar.click();
+  }
+  adicionarNoViaDialogo("esfera");
   dbg = win.__yashDebug();
   ok("adicionar esfera cria um no na cena", dbg && dbg.nos === 1, dbg && dbg.nos);
   ok("no novo ja esta selecionado no inspetor", !!campoDe("Nome"), doc.getElementById("inspector").textContent.slice(0, 60));
@@ -166,8 +183,9 @@ setTimeout(function () {
 
   doc.getElementById("salvar").click();
   var salvo = (win.__salvos || [])[0];
-  ok("salvar envia a cena junto", !!salvo && !!salvo.cena && salvo.cena.objetos.length === 1, JSON.stringify(salvo && salvo.cena));
-  ok("a cena salva traz o no editado no wireframe", !!salvo && salvo.cena.objetos[0].nome === "bola" && salvo.cena.objetos[0].x === 181 && salvo.cena.objetos[0].w === 96, JSON.stringify(salvo && salvo.cena.objetos[0]));
+  ok("salvar envia as cenas junto", !!salvo && Array.isArray(salvo.cenas) && salvo.cenas[0].objetos.length === 1, JSON.stringify(salvo && salvo.cenas));
+  ok("o projeto salvo traz a dimensao", !!salvo && (salvo.dim === "2d" || salvo.dim === "3d"), salvo && salvo.dim);
+  ok("a cena salva traz o no editado no wireframe", !!salvo && salvo.cenas[0].objetos[0].nome === "bola" && salvo.cenas[0].objetos[0].x === 181 && salvo.cenas[0].objetos[0].w === 96, JSON.stringify(salvo && salvo.cenas[0].objetos[0]));
 
   doc.getElementById("rodar").click();
   dbg = win.__yashDebug();
@@ -189,16 +207,29 @@ setTimeout(function () {
   ok("parar volta a mostrar so a cena", dbg && dbg.objs === 1 && dbg.nos === 1, JSON.stringify(dbg));
 
   doc.getElementById("rodar").click();
-  var itens2 = Array.prototype.slice.call(doc.querySelectorAll(".menu-pop button"));
-  var addBloco = itens2.filter(function (n) { return n.textContent.trim() === "Adicionar bloco"; })[0];
-  ok("menu Cena tem Adicionar bloco", !!addBloco);
-  if (addBloco) addBloco.click();
+  adicionarNoViaDialogo("bloco");
   dbg = win.__yashDebug();
   ok("mexer na cena durante a execucao para o jogo", dbg && dbg.emExecucao === false && dbg.nos === 2, JSON.stringify(dbg));
 
   tecla("Delete");
   dbg = win.__yashDebug();
   ok("Delete remove o no selecionado", dbg && dbg.nos === 1 && dbg.cena.objetos[0].nome === "bola", JSON.stringify(dbg.cena.objetos.map(function (o) { return o.nome; })));
+
+  // --- nos 3D desenham sem explodir (isometrico + esfera com gradiente) ---
+  var erro3d = null;
+  try {
+    var cv3 = doc.createElement("canvas"); cv3.width = 400; cv3.height = 300;
+    var eng3 = new win.YashWeb.Engine(cv3);
+    eng3.carregar({ objetos: [
+      { tipo: "box3d", x: 40, y: 40, w: 80, h: 80, profundidade: 60, cor: "#5b8bff" },
+      { tipo: "plano3d", x: 150, y: 120, w: 120, h: 60, profundidade: 8, cor: "#3c5a46" },
+      { tipo: "cilindro3d", x: 220, y: 60, w: 40, h: 90, profundidade: 40, cor: "#e8c46a" },
+      { tipo: "esfera3d", x: 60, y: 180, w: 50, h: 50, profundidade: 50, cor: "#ff785a" },
+      { tipo: "modelo3d", x: 300, y: 200, w: 60, h: 60, profundidade: 60, cor: "#9ab0d8" }
+    ] });
+    eng3.update(0);
+  } catch (e) { erro3d = (e && e.message) || String(e); }
+  ok("nos 3D desenham sem erro", erro3d === null, erro3d);
 
   console.log("\n" + (total - falhas) + " ok, " + falhas + " falhas");
   process.exit(falhas ? 1 : 0);

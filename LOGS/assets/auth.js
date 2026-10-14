@@ -146,9 +146,10 @@
     return ler(K_PROJ, []).filter(function (p) { return usuario && p.donoId === usuario.uid; })
       .sort(function (a, b) { return (b.atualizadoEm || 0) - (a.atualizadoEm || 0); });
   }
-  function localCriar(nome) {
+  function dimDe(dim) { return dim === "3d" ? "3d" : "2d"; }
+  function localCriar(nome, dim) {
     var arr = ler(K_PROJ, []);
-    var p = { id: novoId("proj"), donoId: usuario.uid, nome: nome || "Projeto sem nome", codigo: "", criadoEm: agora(), atualizadoEm: agora() };
+    var p = { id: novoId("proj"), donoId: usuario.uid, nome: nome || "Projeto sem nome", dim: dimDe(dim), codigo: "", cenas: [], cenaAtiva: null, assets: [], criadoEm: agora(), atualizadoEm: agora() };
     arr.push(p); gravar(K_PROJ, arr); return p;
   }
   function localCarregar(id) {
@@ -229,8 +230,8 @@
       return aplicarUsuario(user, guardado ? Object.assign(perfilDeUser(user), guardado) : perfilDeUser(user));
     });
   }
-  function fbcriar(nome) {
-    var dados = { donoId: usuario.uid, nome: nome || "Projeto sem nome", codigo: "", criadoEm: agora(), atualizadoEm: agora() };
+  function fbcriar(nome, dim) {
+    var dados = { donoId: usuario.uid, nome: nome || "Projeto sem nome", dim: dimDe(dim), codigo: "", cenas: [], cenaAtiva: null, assets: [], criadoEm: agora(), atualizadoEm: agora() };
     return comPrazo(fbfn.cs.addDoc(fbfn.cs.collection(dbRef, "projetos"), dados), 8000, "Criar o projeto").then(function (ref) { return Object.assign({ id: ref.id }, dados); });
   }
   function fblistar() {
@@ -337,7 +338,7 @@
         });
     },
     listarProjetos: function () { return usuario ? (nuvemAtiva() ? fblistar() : Promise.resolve(localListar())) : Promise.resolve([]); },
-    criarProjeto: function (nome) { return usuario ? (nuvemAtiva() ? fbcriar(nome) : Promise.resolve(localCriar(nome))) : Promise.reject(new Error("Sem conta.")); },
+    criarProjeto: function (nome, dim) { return usuario ? (nuvemAtiva() ? fbcriar(nome, dim) : Promise.resolve(localCriar(nome, dim))) : Promise.reject(new Error("Sem conta.")); },
     carregarProjeto: function (id) { return nuvemAtiva() ? fbcarregar(id) : Promise.resolve(localCarregar(id)); },
     salvarProjeto: function (id, dados) { return usuario ? (nuvemAtiva() ? fbsalvar(id, dados) : Promise.resolve(localSalvar(id, dados))) : Promise.reject(new Error("Sem conta.")); },
     excluirProjeto: function (id) { return usuario ? (nuvemAtiva() ? fbexcluir(id) : Promise.resolve(localExcluir(id))) : Promise.reject(new Error("Sem conta.")); },

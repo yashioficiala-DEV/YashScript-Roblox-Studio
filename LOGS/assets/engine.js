@@ -62,6 +62,37 @@
     }
   }
 
+  function cor3d(hex, fator) {
+    var h = (typeof hex === "string" && hex.charAt(0) === "#") ? hex.slice(1) : "7799ff";
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var r = parseInt(h.slice(0, 2), 16) || 120, g = parseInt(h.slice(2, 4), 16) || 150, b = parseInt(h.slice(4, 6), 16) || 255;
+    function c(v) { return Math.max(0, Math.min(255, Math.round(v * fator))); }
+    return "rgb(" + c(r) + "," + c(g) + "," + c(b) + ")";
+  }
+
+  // desenha um volume isométrico simples (sem WebGL): basta para o estúdio mostrar 3D
+  function iso(ctx, o) {
+    var d = Math.max(4, Number(o.profundidade) || 40);
+    var ox = d * 0.5, oy = d * 0.5;
+    var x = o.x, y = o.y, w = o.w, h = o.h;
+    ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = 1;
+    // face lateral direita
+    ctx.fillStyle = cor3d(o.cor, 0.7);
+    ctx.beginPath();
+    ctx.moveTo(x + w, y); ctx.lineTo(x + w + ox, y - oy);
+    ctx.lineTo(x + w + ox, y + h - oy); ctx.lineTo(x + w, y + h);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // face superior
+    ctx.fillStyle = cor3d(o.cor, 1.18);
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x + ox, y - oy);
+    ctx.lineTo(x + w + ox, y - oy); ctx.lineTo(x + w, y);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // face frontal
+    ctx.fillStyle = cor3d(o.cor, 0.9);
+    ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h);
+  }
+
   function desenhar(ctx, o) {
     if (o._dead || o.visivel === false) return;
     var cx = o.x + o.w / 2, cy = o.y + o.h / 2;
@@ -103,6 +134,23 @@
       } else {
         ctx.globalAlpha = (o.alpha == null ? 1 : o.alpha) * 0.3;
         ctx.fillRect(o.x, o.y, o.w, o.h);
+      }
+    } else if (o.tipo === "box3d" || o.tipo === "plano3d" || o.tipo === "cilindro3d" || o.tipo === "modelo3d") {
+      iso(ctx, o);
+    } else if (o.tipo === "esfera3d") {
+      var d = Math.max(0, Number(o.profundidade) || 0);
+      var g = ctx.createRadialGradient(cx - o.w * 0.2, cy - o.h * 0.25, Math.min(o.w, o.h) * 0.1, cx, cy, Math.max(o.w, o.h) / 2);
+      g.addColorStop(0, cor3d(o.cor, 1.25));
+      g.addColorStop(1, cor3d(o.cor, 0.6));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, o.w / 2, o.h / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (d > 0) {
+        ctx.strokeStyle = "rgba(255,255,255,.25)";
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, o.w / 2, (d / 2) * 0.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
       }
     } else {
       ctx.fillRect(o.x, o.y, o.w, o.h);
